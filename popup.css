@@ -1,0 +1,26 @@
+#popup {
+    font-family: Arial, sans-serif;
+    padding: 10px;
+    width: 300px;
+}
+
+h2 {
+    font-size: 16px;
+    margin-top: 20px;
+}
+
+div {
+    margin-bottom: 10px;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #45a049;
+}

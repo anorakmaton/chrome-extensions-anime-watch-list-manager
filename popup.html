@@ -1,14 +1,31 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Anime Watchlist</title>
-  </head>
-  <body>
-    <h1>Your Watchlist</h1>
-    <ul id="watchlist">
-      <!-- 視聴リストがここに表示される -->
-    </ul>
-    <button id="addAnime">Add Anime</button>
-    <script src="popup.js"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Anime Watchlist</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div id="popup">
+    <!-- 未視聴プレイリスト -->
+    <h2>未視聴プレイリスト</h2>
+    <div id="unwatched-playlist"></div>
+
+    <!-- 期限切れリスト -->
+    <h2>期限切れリスト</h2>
+    <div id="expired-playlist"></div>
+
+    <!-- 視聴中アニメリスト -->
+    <h2>視聴中アニメリスト</h2>
+    <div id="watching-anime-list"></div>
+
+    <!-- 視聴切りアニメリスト -->
+    <h2>視聴切りアニメリスト</h2>
+    <div id="dropped-anime-list"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
 </html>

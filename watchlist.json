@@ -1,0 +1,66 @@
+[
+    {
+        "title": "Attack on Titan",
+        "url": "https://videosite.com/anime/attack-on-titan",
+        "image": "https://nicovideo.cdn.nimg.jp/thumbnails/44169129/44169129.35278467.M",
+        "currentEpisode": 5,
+        "totalEpisodes": 25,
+        "lastWatchedPosition": 900,
+        "status": "watching",
+        "episodes": [
+            {
+                "episode": 1,
+                "watched": true,
+                "url": "https://videosite.com/anime/attack-on-titan/episode1",
+                "freeUntil": "2024-10-15T23:59:59Z"
+            },
+            {
+                "episode": 2,
+                "watched": true,
+                "url": "https://videosite.com/anime/attack-on-titan/episode2",
+                "freeUntil": "2024-10-16T23:59:59Z"
+            },
+            {
+                "episode": 3,
+                "watched": true,
+                "url": "https://videosite.com/anime/attack-on-titan/episode3",
+                "freeUntil": "2024-10-17T23:59:59Z"
+            },
+            {
+                "episode": 4,
+                "watched": true,
+                "url": "https://videosite.com/anime/attack-on-titan/episode4",
+                "freeUntil": "2024-10-18T23:59:59Z"
+            },
+            {
+                "episode": 5,
+                "watched": false,
+                "url": "https://videosite.com/anime/attack-on-titan/episode5",
+                "freeUntil": "2024-10-19T23:59:59Z"
+            }
+        ]
+    },
+    {
+        "title": "One Piece",
+        "url": "https://videosite.com/anime/one-piece",
+        "image": "https://nicovideo.cdn.nimg.jp/thumbnails/44169129/44169129.35278467.M",
+        "currentEpisode": 100,
+        "totalEpisodes": null,
+        "lastWatchedPosition": 0,
+        "status": "planned",
+        "episodes": [
+            {
+                "episode": 1,
+                "watched": true,
+                "url": "https://videosite.com/anime/one-piece/episode1",
+                "freeUntil": "2024-10-20T23:59:59Z"
+            },
+            {
+                "episode": 2,
+                "watched": false,
+                "url": "https://videosite.com/anime/one-piece/episode2",
+                "freeUntil": "2024-10-21T23:59:59Z"
+            }
+        ]
+    }
+]

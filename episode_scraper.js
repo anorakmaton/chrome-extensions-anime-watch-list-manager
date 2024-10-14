@@ -19,6 +19,7 @@ async function episodeScraper(animeList) {
         const animeElements = doc.querySelectorAll('.contentBody.video.uad.videoList.videoList01 .videoListInner:not(.videoListSkeleton) li.item')
         const episodeTemplate = {
             title: '',
+            shortTitle: '',
             episodeNumber: 0,
             url: '',
             imageUrl: '',
@@ -47,7 +48,8 @@ async function episodeScraper(animeList) {
                 // すでにエピソードが登録されているか確認
                 const episodeIndex = anime.episodes.findIndex(e => e.title === episodeTitle);
                 if (episodeIndex === -1) {
-                    const episode = { ...episodeTemplate, title: episodeTitle, url: episodeUrl, releaseDate: releaseDate, freeUntil: freeUntil, imageUrl: imageUrl };
+                    const shortTitle = episodeTitle.substring(anime.title.length).trim();
+                    const episode = { ...episodeTemplate, title: episodeTitle, shortTitle: shortTitle, url: episodeUrl, releaseDate: releaseDate, freeUntil: freeUntil, imageUrl: imageUrl };
                     anime.episodes.unshift(episode);
                     console.log(`Added episode: ${episodeTitle}`);
                 }

@@ -283,6 +283,11 @@ function createEpisodeCard(anime, episode_idx, idx) {
                 const title = document.createElement('h2');
                 title.textContent = episode.title;
 
+                const shortTitle = document.createElement('h2');
+                shortTitle.textContent = episode.shortTitle;
+                console.log(`episode.shortTitle: ${episode.shortTitle}`);
+                shortTitle.className = 'short-title';
+
                 const dateDiv = document.createElement('div');
                 dateDiv.className = 'release-until-date';
                 {
@@ -407,6 +412,7 @@ function createEpisodeCard(anime, episode_idx, idx) {
                 }
 
                 mainDiv.appendChild(title);
+                mainDiv.appendChild(shortTitle);
                 mainDiv.appendChild(dateDiv);
                 mainDiv.appendChild(episodeNumber);
                 mainDiv.appendChild(buttonsDiv);

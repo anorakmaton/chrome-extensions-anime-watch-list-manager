@@ -5,25 +5,48 @@
   <meta charset="UTF-8">
   <title>Anime Watchlist</title>
   <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 
 <body>
-  <div id="popup">
-    <!-- 未視聴プレイリスト -->
-    <h2>未視聴プレイリスト</h2>
-    <div id="unwatched-playlist"></div>
 
-    <!-- 期限切れリスト -->
-    <h2>期限切れリスト</h2>
-    <div id="expired-playlist"></div>
+  <div id="anime-lists">
+    <div class="anime-list">
+      <button class="toggle-btn" name="playlist">プレイリスト</button>
+      <div class="list-content playlist" id="playlist">
+        <div class="episode unwatched-episode" id="unwatched-episode">
+            <!-- 未視聴エピソードがここに追加される -->
+        </div>
+        <!-- 視聴済みエピソードを表示するセクション -->
+        <div class="watched-section" id="watched-episode">
+            <h4>視聴済み</h4>
+            <div class="episode watched-episode">
+                <!-- 視聴済みエピソードがここに追加される -->
+            </div>
+        </div>
+    </div>
+    </div>
 
-    <!-- 視聴中アニメリスト -->
-    <h2>視聴中アニメリスト</h2>
-    <div id="watching-anime-list"></div>
+    <div class="anime-list">
+      <button class="toggle-btn" name="expired-list">期限切れリスト</button>
+      <div id="expired-list" class="list-content">
+        <!-- 期限切れエピソードがここに追加される -->
+      </div>
+    </div>
 
-    <!-- 視聴切りアニメリスト -->
-    <h2>視聴切りアニメリスト</h2>
-    <div id="dropped-anime-list"></div>
+    <div class="anime-list">
+      <button class="toggle-btn" name="watching-anime-list">視聴中アニメリスト</button>
+      <div id="watching-anime-list" class="list-content">
+        <!-- 視聴中アニメがここに追加される -->
+      </div>
+    </div>
+
+    <div class="anime-list">
+      <button class="toggle-btn" name="dropped-anime-list">視聴切りアニメリスト</button>
+      <div id="dropped-anime-list" class="list-content">
+        <!-- 視聴切りアニメがここに追加される -->
+      </div>
+    </div>
   </div>
   <script src="popup.js"></script>
 </body>

@@ -105,6 +105,9 @@ body {
 .anime-card h2, #playlist .episode-card h2 {
     max-width: 230px;
 }
+#playlist .episode-card h2.short-title {
+    display: none;
+}
 .anime-card .current-episode,
 .episode-card .current-episode {
     color: #bbb;
@@ -241,8 +244,10 @@ body {
     border-color: #6f6f6f;
     border-width: thin;
 }
-
-.list-content.episode-list .episode-card h2 {
+.list-content.episode-list .episode-card h2:not(.short-title) {
+    display: none;
+}
+.list-content.episode-list .episode-card h2.short-title {
     display: -webkit-box;
     -webkit-line-clamp: 1;
     line-clamp: 1;

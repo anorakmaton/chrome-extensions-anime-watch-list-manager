@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拡張機能の設定</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>拡張機能の設定</h1>
+  
+  <!-- アニメシリーズまとめURL -->
+  <label for="seriesUrl">アニメシリーズまとめURL:</label>
+  <input type="url" id="seriesUrl" placeholder="シリーズURLを入力" />
+
+  <!-- 今期のエピソード一覧URL -->
+  <label for="episodeListUrl">今期のエピソード一覧URL:</label>
+  <input type="url" id="episodeListUrl" placeholder="エピソード一覧URLを入力" />
+
+  <button id="saveBtn">保存</button>
+
+  <script src="options.js"></script>
+</body>
+</html>

@@ -4,8 +4,9 @@ function updateAll() {
 }
 
 function updatePlaylist() {
-    chrome.storage.local.get({ watchlist: [] }, (result) => {
+    chrome.storage.local.get({ watchlist: [], playList: [] }, (result) => {
         let watchlist = result.watchlist;
+        let playList = result.playList;
         const unwatchedList = document.getElementById('unwatched-episode');
         const watchedList = document.getElementById('watched-episode');
         //const expiredList = document.getElementById('expired-episode');
@@ -19,8 +20,8 @@ function updatePlaylist() {
         watchlist.forEach(anime => {
             if (Object.keys(anime.episodes).length === 0) return
             let episode_idx = 0;
-            
-            Object.keys(anime.episodes).forEach(episode => {
+            anime.episodes.forEach(episode => {
+                playList.push(episode);
                 //console.log(`!episode.watched: ${!episode.watched}, new Date(episode.freeUntil): ${new Date(episode.freeUntil)}, currentDate: ${currentDate}`);
                 // 未視聴のエピソード
                 if (!episode.watched) {
@@ -40,6 +41,9 @@ function updatePlaylist() {
             });
 
         });
+
+        playList = watchlist.filter(anime => anime.status === 'watching').map(anime => anime.episodes).flat().filter(episode => console.log);
+        chrome.storage.local.set({ playList: playList });
     });
 }
 
@@ -271,10 +275,14 @@ function createEpisodeCard(anime, episode_idx, idx) {
             imgDiv.className = 'thumbnail';
             {
                 const img = document.createElement('img');
-                img.src = episode.imageUrl || "https://example.com/default.jpg"; // デフォルト画像を設定
+                img.src = episode.imageUrl; // デフォルト画像を設定
                 img.alt = episode.title;
 
+                const overlayIcon = document.createElement('div');
+                overlayIcon.className = 'overlay-icon';
+
                 imgDiv.appendChild(img);
+                imgDiv.appendChild(overlayIcon);
             }
 
             const mainDiv = document.createElement('div');
@@ -285,7 +293,6 @@ function createEpisodeCard(anime, episode_idx, idx) {
 
                 const shortTitle = document.createElement('h2');
                 shortTitle.textContent = episode.shortTitle;
-                console.log(`episode.shortTitle: ${episode.shortTitle}`);
                 shortTitle.className = 'short-title';
 
                 const dateDiv = document.createElement('div');
@@ -295,8 +302,8 @@ function createEpisodeCard(anime, episode_idx, idx) {
                     releseDate.className = 'release-date';
                     // 公開日をyyyy/mm/dd/ hh:mm形式に変換
                     const date = new Date(episode.releaseDate);
-                    const month = date.getMonth() + 1;
-                    const day = date.getDate();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
                     const hours = String(date.getHours()).padStart(2, '0');
                     const minutes = String(date.getMinutes()).padStart(2, '0');
                     releseDate.textContent = `${date.getFullYear()}/${month}/${day} ${hours}:${minutes} 公開`;
@@ -332,7 +339,7 @@ function createEpisodeCard(anime, episode_idx, idx) {
 
                     dateDiv.appendChild(releseDate);
                     dateDiv.appendChild(freeUntil);
-                    dateDiv.appendChild(status);
+                    //dateDiv.appendChild(status);
                 }
 
                 const episodeNumber = document.createElement('span');
@@ -347,6 +354,7 @@ function createEpisodeCard(anime, episode_idx, idx) {
                     //playButton.textContent = '再生';
                     playButton.className = 'episode-button playButton';
                     playButton.value = episode.url;
+                    playButton.title = '再生';
                     playButton.addEventListener('click', function () {
                         console.log('button.value:', playButton.value);
                         chrome.tabs.create({ url: playButton.value });
@@ -361,15 +369,17 @@ function createEpisodeCard(anime, episode_idx, idx) {
                     const watchedButton = document.createElement('button');
                     //watchedButton.textContent = '視聴済み';
                     watchedButton.className = 'episode-button watchedButton';
-                    watchedButton.value = episode.episodeNumber;
+                    watchedButton.value = episode.title;
+                    watchedButton.title = '視聴済みにする';
                     watchedButton.addEventListener('click', function () {
                         chrome.storage.local.get({ watchlist: [] }, (result) => {
                             let watchlist = result.watchlist;
                             let _anime = watchlist.find(a => a.title === anime.title);
                             if (_anime) {
-                                let _episode = _anime.episodes.find(e => e.episodeNumber == watchedButton.value);
+                                let _episode = _anime.episodes.find(e => e.title == watchedButton.value);
                                 if (_episode) {
                                     _episode.watched = true;
+                                    console.log('episodewatrched button clicked');
                                     chrome.storage.local.set({ watchlist: watchlist }, updateAll);
                                 }
                             }
@@ -385,15 +395,17 @@ function createEpisodeCard(anime, episode_idx, idx) {
                     const unwatchedButton = document.createElement('button');
                     //unwatchedButton.textContent = '未視聴';
                     unwatchedButton.className = 'episode-button unwatchedButton';
-                    unwatchedButton.value = episode.episodeNumber;
+                    unwatchedButton.value = episode.title;
+                    unwatchedButton.title = '未視聴にする';
                     unwatchedButton.addEventListener('click', function () {
                         chrome.storage.local.get({ watchlist: [] }, (result) => {
                             let watchlist = result.watchlist;
                             let _anime = watchlist.find(a => a.title === anime.title);
                             if (_anime) {
-                                let _episode = _anime.episodes.find(e => e.episodeNumber == unwatchedButton.value);
+                                let _episode = _anime.episodes.find(e => e.title == unwatchedButton.value);
                                 if (_episode) {
                                     _episode.watched = false;
+                                    console.log('episodeUnwatrched button clicked');
                                     chrome.storage.local.set({ watchlist: watchlist }, updateAll);
                                 }
                             }
@@ -406,9 +418,36 @@ function createEpisodeCard(anime, episode_idx, idx) {
                         unwatchedButton.appendChild(unwatchedIcon);
                     }
 
+                    const moveToDroppedButton = document.createElement('button');
+                    //moveToDroppedButton.textContent = '視聴切り';
+                    moveToDroppedButton.className = 'episode-button moveToDroppedButton';
+                    moveToDroppedButton.value = anime.title;
+                    moveToDroppedButton.title = '視聴切りにする';
+                    moveToDroppedButton.addEventListener('click', function () {
+                        chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
+                            let watchlist = result.watchlist;
+                            let droppedList = result.droppedList;
+                            let _anime = watchlist.find(a => a.title === anime.title);
+                            if (_anime) {
+                                watchlist = watchlist.filter(a => a.title !== anime.title);
+                                _anime.status = "dropped";
+                                droppedList.push(_anime);
+                                chrome.storage.local.set({ watchlist: watchlist, droppedList: droppedList }, updateAll);
+                            }
+                        });
+                    });
+                    {
+                        const moveToDroppedIcon = document.createElement('img');
+                        moveToDroppedIcon.className = 'episode-button moveToDroppedIcon';
+                        moveToDroppedIcon.src = 'images/download-icon.png';
+
+                        moveToDroppedButton.appendChild(moveToDroppedIcon);
+                    }
+
                     buttonsDiv.appendChild(playButton);
                     buttonsDiv.appendChild(watchedButton);
                     buttonsDiv.appendChild(unwatchedButton);
+                    //buttonsDiv.appendChild(moveToDroppedButton);
                 }
 
                 mainDiv.appendChild(title);
@@ -549,7 +588,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                     console.log(result[0].result);
                     chrome.tabs.remove(tab.id);
                     const updatedAnimeList = result[0].result;
-                    chrome.storage.local.set({ watchlist: updatedAnimeList }, updateAll);
+                    const playList = watchlist.filter(anime => anime.status === 'watching').map(anime => anime.episodes).flat().filter(episode => console.log);
+                    chrome.storage.local.set({ watchlist: updatedAnimeList, playList: playList }, updateAll);
                 });
             });
         }
@@ -567,15 +607,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
+// storageのデータが更新されたとき
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local') {
+        // 差分を取得
+        const changedItems = Object.keys(changes);
+        console.log(changedItems);
+
+        updateAll();
+    }
+});
+
 // 拡張機能がインストールされたときに実行される処理
 chrome.runtime.onInstalled.addListener(() => {
-    //jsonファイルを読み込む
-    fetch('watchlist.json')
-        .then(response => response.json())
-        .then(data => {
-            //ローカルストレージにデータを保存
-            // chrome.storage.local.set({ watchlist: data, droppedList: [] }, () => {
-            //     console.log("Watchlist saved");
-            // });
-        });
+    
 });

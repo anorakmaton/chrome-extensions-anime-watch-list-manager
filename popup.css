@@ -79,13 +79,26 @@ body {
     height: 90px;
 }
 
-.anime-card img,
-.episode-card img {
+.anime-card .thumbnail > img,
+.episode-card .thumbnail > img {
     border-radius: 5px;
     margin-right: 10px;
     width: 160px;
     height: 90px;
 }
+
+/* newアイコンのスタイル */
+.overlay-icon {
+    position: relative; /* 相対位置に設定 */
+    top: -100px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+    background-image: url('images/new-icon-2-blue.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
 
 .anime-card h2,
 .episode-card h2 {
@@ -122,6 +135,10 @@ body {
     width: 100%;
 }
 
+.release-until-date span {
+    margin-right: 10px;
+}
+
 .anime-info {
     display: flex;
     flex-direction: column;
@@ -132,7 +149,8 @@ body {
 
 .release-until-date {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
+    margin-right: 10px;
 }
 
 /* アニメカードのホバー効果 */
@@ -200,6 +218,10 @@ body {
     /* 赤色 */
 }
 
+/* 視聴切りに移動ボタンの個別スタイル */
+/* .moveToDroppedButton {
+  
+} */
 /* #unwatched-episodeの中のキャンセルボタンを非表示 */
 .episode-card:not(.watched) .unwatchedButton {
     display: none;
@@ -228,6 +250,10 @@ body {
     overflow: hidden;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
     margin-bottom: 5px;
+}
+
+.episode-card.watched .overlay-icon {
+    display: none;
 }
 
 .list-content.episode-list {
@@ -285,7 +311,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     align-content: flex-end;
-    margin-right: 20px;
+    margin-right: 10px;
 }
 
 .list-content.episode-list .episode-card .episode-info .episode-button {

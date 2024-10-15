@@ -22,19 +22,23 @@ async function episodeScraper(animeList) {
             shortTitle: '',
             episodeNumber: 0,
             url: '',
+            duration: 0,
+            lastTime: 0,
             imageUrl: '',
             releaseDate: '',
             freeUntil: '',
-            watched: false
+            watched: false,
+            status: ''
         }
 
         for (const animeElement of animeElements) {
-            let episodeTitle = animeElement.querySelector('.itemContent .itemTitle a').textContent.trim();
+            let episodeTitle = animeElement.querySelector('.itemContent .itemTitle a').title;
             const episodeUrl = animeElement.querySelector('.itemContent .itemTitle a').href;
             const releaseDate = animeElement.querySelector('.videoList01Wrap .itemTime .video_uploaded .time').textContent.trim();
             const imageUrl = animeElement.querySelector('.videoList01Wrap .uadWrap .itemThumbBox .itemThumb .itemThumbWrap .thumb').src;
             const freeUntil = new Date(new Date(releaseDate).getTime() + 7 * 24 * 60 * 60 * 1000);
-            
+            const freeUntilString = freeUntil.toISOString();
+
             const anime = animeList.find(a => {
                 const shortEpisodeTitle = episodeTitle.substring(0, a.title.length);
                 return isSimilar(a.title, shortEpisodeTitle);
@@ -49,7 +53,7 @@ async function episodeScraper(animeList) {
                 const episodeIndex = anime.episodes.findIndex(e => e.title === episodeTitle);
                 if (episodeIndex === -1) {
                     const shortTitle = episodeTitle.substring(anime.title.length).trim();
-                    const episode = { ...episodeTemplate, title: episodeTitle, shortTitle: shortTitle, url: episodeUrl, releaseDate: releaseDate, freeUntil: freeUntil, imageUrl: imageUrl };
+                    const episode = { ...episodeTemplate, title: episodeTitle, shortTitle: shortTitle, url: episodeUrl, releaseDate: releaseDate, freeUntil: freeUntilString, imageUrl: imageUrl };
                     anime.episodes.unshift(episode);
                     console.log(`Added episode: ${episodeTitle}`);
                 }

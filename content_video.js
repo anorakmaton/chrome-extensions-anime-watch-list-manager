@@ -70,19 +70,25 @@ function getEpisodeData(title) {
 const timeDiff = 10; // 10秒以上再生したら更新
 function updateEpisodeTime(time) {
     if (time - episodeData.lastTime > timeDiff) {
-        chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
-            watchlist = result.watchlist;
+        chrome.storage.local.get({ watchlist: [], playList: [] }, (result) => {
+            const watchlist = result.watchlist;
+            const playList = result.playList;
             episodeData.lastTime = time;
             watchlist.find(anime => anime.title === animeData.title).episodes.find(episode => episode.title === episodeData.title).lastTime = time;
-            chrome.storage.local.set({ watchlist: watchlist });
+            playList.find(episode => episode.title === episodeData.title).lastTime = time;
+
+            chrome.storage.local.set({ watchlist: watchlist, playList: playList });
         });
     }
 }
+
 async function updateEpisodeWatched() {
-    await chrome.storage.local.get({ watchlist: [], droppedList: [] }, async (result) => {
-        watchlist = result.watchlist;
+    await chrome.storage.local.get({ watchlist: [], playList: [] }, async (result) => {
+        const watchlist = result.watchlist;
+        const playList = result.playList;
         watchlist.find(anime => anime.title === animeData.title).episodes.find(episode => episode.title === episodeData.title).watched = true;
-        await chrome.storage.local.set({ watchlist: watchlist });
+        playList.find(episode => episode.title === episodeData.title).watched = true;
+        await chrome.storage.local.set({ watchlist: watchlist, playList: playList });
     });
     console.log('エピソードを視聴済みに設定しました');
 }
@@ -98,11 +104,19 @@ function logLastTime(episodeTitle, animeTitle) {
 }   
 
 function playNextPlayList() {
-    chrome.storage.local.get({ watchlist: [] }, (result) => {
-        const watchlist = result.watchlist;
-        const episodes = watchlist.map(anime => anime.episodes).flat();
-        if (episodes.length > 0) {
-            const nextVideo = episodes[0];
+    chrome.storage.local.get({ playList: [] }, (result) => {
+        const playList = result.playList;
+        if (playList.length > 0) {
+            const nowIdx = playList.findIndex(episode => episode.title === episodeData.title);
+            if (nowIdx === -1) {
+                console.log('再生リストに現在のエピソードが見つかりません');
+                return;
+            }
+            if (nowIdx === playList.length - 1) {
+                console.log('再生リストの最後のエピソードが終了しました');
+                return;
+            }
+            const nextVideo = playList[nowIdx + 1];
             // 現在のタブを更新
             console.log('次のエピソードを再生します');
             chrome.runtime.sendMessage({ action: "playNext", url: nextVideo.url });

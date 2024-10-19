@@ -21,7 +21,12 @@ async function initAnimeData() {
         const animeData = { ...animeTemplate, title: anime.title, officialPageUrl: anime.url, imageUrl: anime.imageUrl };  
         animeDataList.push(animeData);
     }
- 
+    // タイトルでソート
+    animeDataList.sort((a, b) => {
+        if (a.title < b.title) return -1;
+        if (a.title > b.title) return 1;
+        return 0;
+    });
     await chrome.storage.local.set({ watchlist: animeDataList, droppedlist: [] });
     return animeDataList;
 }

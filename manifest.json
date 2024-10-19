@@ -29,5 +29,11 @@
     "https://www.nicovideo.jp/*",
     "https://ch.nicovideo.jp/*",
     "https://blog.nicovideo.jp/*"
-  ]
+  ],
+  "web_accessible_resources": [
+        {
+            "resources": ["Sortable.min.js"],
+            "matches": ["<all_urls>"]
+        }
+    ]
 }

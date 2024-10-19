@@ -202,6 +202,28 @@ body {
     height: 30px
 }
 
+/* エピソードdivのスタイル */
+.episode-title-div {
+    position: relative;
+}
+
+.episode-title{
+    display: inline-block;
+}
+
+/* 有料アイコンのスタイル */
+.iconPayment {
+    display: inline-block;
+    padding: 2px;
+    position: absolute;
+    top: 38px;
+    right: -214px;
+    font-size: 10px;
+    border: #c90 solid 1px;
+    color: #c90;
+    line-height: 1em;
+}
+
 .episode-button:hover {
     background-color: #333;
 }
@@ -285,16 +307,32 @@ body {
     border-radius: 5px 5px 0px 0px;
 }
 
+.thumbnail {
+    position: relative;
+}
 .list-content.episode-list .episode-card .thumbnail {
     display: none;
     /* サムネイルを非表示 */
 }
 
+/* アニメカード内のエピソードカードの有料アイコンのスタイル */
+.list-content.episode-list .iconPayment {
+    display: inline-block;
+    padding: 2px;
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    font-size: 10px;
+    border: #c90 solid 1px;
+    color: #c90;
+    line-height: 1em;
+}
 .list-content.episode-list .episode-card .episode-info {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     width: 100%;
+    position: relative;
 }
 
 .list-content.episode-list .episode-card .episode-info .episode-number {

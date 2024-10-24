@@ -315,6 +315,18 @@ body {
     /* サムネイルを非表示 */
 }
 
+/* エピソードカード内のボタンコンテナーのスタイル */
+.episode-buttons {
+    display: flex;
+    justify-content: flex-start;
+    width: 60%;
+}
+/* エピソードカード内のprimeVideoボタンのスタイル */
+img.primeVideoIcon {
+    width: 20px;
+    height: 20px;
+}
+
 /* アニメカード内のエピソードカードの有料アイコンのスタイル */
 .list-content.episode-list .iconPayment {
     display: inline-block;

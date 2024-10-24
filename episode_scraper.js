@@ -57,9 +57,11 @@ async function episodeScraper(animeList, playList) {
                     const shortTitle = episodeTitle.substring(anime.title.length).trim();
                     const episode = { ...episodeTemplate, animeTitle:anime.title, title: episodeTitle, shortTitle: shortTitle, isPaid: isPaid, url: episodeUrl, releaseDate: releaseDate, freeUntil: freeUntilString, imageUrl: imageUrl };
                     // 未視聴のエピソードをwatchlistとプレイリストに追加
-                    anime.episodes.unshift(episode);
+                    anime.episodes.push(episode);
                     playList.unshift(episode);
                     console.log(`Added episode: ${episodeTitle}`);
+                    // anime.episodesをリリース日でソート
+                    anime.episodes.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
                 }
                 else {
                     // すでに登録されているエピソードを更新
@@ -68,6 +70,7 @@ async function episodeScraper(animeList, playList) {
                     const isPaid = paidIcon !== null;
                     episode.isPaid = isPaid;
                 }
+            
             }
             else {
                 // 一致するアニメが見つからなかった場合
@@ -94,7 +97,11 @@ async function episodeScraper(animeList, playList) {
     // console.log(animeList);
     // console.log(playList);
     // console.log([animeList, playList]);
-    return [animeList, playList];
+    
+    await chrome.storage.local.set({ watchlist: animeList, playList: playList }).then(() => {
+        sendResponse('エピソードデータを更新しました');
+    });
+    return true;
 }
 
 // レーベンシュタイン距離を計算する関数

@@ -1,10 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const seriesUrlInput = document.getElementById('seriesUrl');
     const episodeListUrlInput = document.getElementById('episodeListUrl');
+    const shouldShowPaidVideo = document.getElementById('shouldShowPaidVideo');
     const saveBtn = document.getElementById('saveBtn');
   
     // 初期値を設定する（保存されている場合はその値を表示）
-    chrome.storage.sync.get(['seriesUrl', 'episodeListUrl'], (result) => {
+    chrome.storage.local.get(['seriesUrl', 'episodeListUrl', 'shouldShowPaidVideoValue'], (result) => {
       if (result.seriesUrl) {
         seriesUrlInput.value = result.seriesUrl;
       }
@@ -17,8 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', () => {
       const seriesUrl = seriesUrlInput.value;
       const episodeListUrl = episodeListUrlInput.value;
-  
-      chrome.storage.sync.set({ seriesUrl, episodeListUrl }, () => {
+      const shouldShowPaidVideoValue = shouldShowPaidVideo.checked;
+      
+      chrome.storage.local.set({ seriesUrl: seriesUrl, episodeListUrl: episodeListUrl, shouldShowPaidVideoValue: shouldShowPaidVideoValue }, () => {
         alert('設定が保存されました');
       });
     });

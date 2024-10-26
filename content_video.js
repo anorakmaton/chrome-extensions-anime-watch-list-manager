@@ -10,28 +10,28 @@ var dbExists = false;
 const observer = new MutationObserver(async (mutationsList, observer) => {
     video = document.querySelector("div > video");
     const title = document.querySelector('div.d_flex.flex-d_column.gap_base h1');
-
     if (video && title) {
-        await getEpisodeData(title.textContent);
+        dbExists = await getEpisodeData(title.textContent);
+        console.log('dbExists:', dbExists);
         observer.disconnect(); // 見つかったら監視を終了
         if (dbExists) {
             video.addEventListener('ended', async () => {
-                console.log('動画の再生が終了しました');
+                //console.log('動画の再生が終了しました');
                 await updateEpisodeWatched();
                 playNextPlayList();
                 // ここで再生終了時に実行したい処理を記述します
             });
             video.addEventListener('play', () => {
-                console.log('動画の再生が開始しました');
+                //console.log('動画の再生が開始しました');
                 // ここで再生開始時に実行したい処理を記述します
             });
             video.addEventListener('pause', () => {
-                console.log('動画の再生が一時停止しました');
+                //console.log('動画の再生が一時停止しました');
                 // ここで一時停止時に実行したい処理を記述します
                 logLastTime(episodeData.title, animeData.title);
             });
             video.addEventListener('seeked', () => {
-                console.log('動画の再生位置を変更しました');
+                //console.log('動画の再生位置を変更しました');
                 // ここで再生位置変更時に実行したい処理を記述します
             });
             video.addEventListener('timeupdate', () => {
@@ -57,12 +57,12 @@ async function getEpisodeData(title) {
                     animeData = anime;
                     animeTitle = anime.title;
                     episodeData = episode;
-                    dbExists = true;
+                    chrome.storage.local.set({ watchlist: watchlist }); // データを更新
+                    return true;
                 }
             });
         });
-
-        chrome.storage.local.set({ watchlist: watchlist }); // データを更新
+        return false;
     });
     return true;
 }
@@ -105,8 +105,9 @@ function logLastTime(episodeTitle, animeTitle) {
 }
 
 function playNextPlayList() {
-    chrome.storage.local.get({ playList: [] }, (result) => {
+    chrome.storage.local.get({ playList: [], shouldShowPaidVideoValue: [] }, (result) => {
         const playList = result.playList;
+        const shouldShowPaidVideoValue = result.shouldShowPaidVideoValue;
         if (playList.length > 0) {
             const nowIdx = playList.findIndex(episode => episode.title === episodeData.title);
             if (nowIdx === -1) {
@@ -117,10 +118,22 @@ function playNextPlayList() {
                 console.log('再生リストの最後のエピソードが終了しました');
                 return;
             }
-            const nextVideo = playList[nowIdx + 1];
-            // 現在のタブを更新
-            console.log('次のエピソードを再生します');
-            chrome.runtime.sendMessage({ action: "playNext", url: nextVideo.url });
+            for (let i = nowIdx + 1; i < playList.length; i++) {
+                // 有料動画を表示しない設定の場合、有料動画はスキップ
+                if (shouldShowPaidVideoValue === false && playList[i].isPaid) {
+                    //console.log('次のエピソードは有料動画です');
+                    continue;
+                }
+                if (!playList[i].watched) {
+                    console.log('次のエピソードを再生します');
+                    chrome.runtime.sendMessage({ action: "playNext", url: playList[i].url });
+                    return;
+                }
+            }
+            // const nextVideo = playList[nowIdx + 1];
+            // // 現在のタブを更新
+            // console.log('次のエピソードを再生します');
+            // chrome.runtime.sendMessage({ action: "playNext", url: nextVideo.url });
         }
     });
 }

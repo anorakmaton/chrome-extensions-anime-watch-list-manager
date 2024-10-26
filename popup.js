@@ -5,10 +5,13 @@ function updateAll() {
 }
 
 function showPlayList() {
-    chrome.storage.local.get({ playList: [] }, (result) => {
+    chrome.storage.local.get({ playList: [], shouldShowPaidVideoValue: [] }, (result) => {
         const playList = result.playList;
+        const shouldShowPaidVideoValue = result.shouldShowPaidVideoValue;
+        console.log(shouldShowPaidVideoValue);
         const unwatchedList = document.getElementById('unwatched-episode');
         const watchedList = document.getElementById('watched-episode');
+        
         unwatchedList.innerHTML = ''; // 以前の内容をクリア
         watchedList.innerHTML = ''; // 以前の内容をクリア
         let currentDate = new Date();
@@ -17,6 +20,11 @@ function showPlayList() {
             // 投稿日が古いに並び替え
             //playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
             playList.forEach(episode => {
+                // 有料配信の場合は表示しない
+                console.log(`episode.title: ${episode.title}, episode.isPaid: ${episode.isPaid}`);
+                if (shouldShowPaidVideoValue === false && episode.isPaid) {
+                    return;
+                }
                 // 未視聴のエピソード
                 if (!episode.watched) {
                     const animeCard = createEpisodeCard(episode, data_episode_idx);
@@ -30,7 +38,7 @@ function showPlayList() {
                     data_episode_idx++;
                 }
                 else {
-                    console.log(`episode.title: ${episode.title}, episode.freeUntil: ${episode.freeUntil}`);
+                    //console.log(`episode.title: ${episode.title}, episode.freeUntil: ${episode.freeUntil}`);
                 }
             });
         }

@@ -364,6 +364,10 @@ img.primeVideoIcon {
     margin-right: 10px;
 }
 
+.list-content.episode-list .episode-card .episode-info .episode-buttons {
+    width: unset;
+} 
+
 .list-content.episode-list .episode-card .episode-info .episode-button {
     margin: 0px;
     width: 25px;

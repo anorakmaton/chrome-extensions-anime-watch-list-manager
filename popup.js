@@ -533,6 +533,18 @@ toggleButtons.forEach(button => {
 });
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // const autoPlaySwitch = document.getElementById("autoPlaySwitch");
+
+    // // スイッチの状態を取得してチェック状態に反映
+    // chrome.storage.sync.get("autoPlayEnabled", (data) => {
+    //     autoPlaySwitch.checked = data.autoPlayEnabled || false;
+    // });
+
+    // // スイッチの変更時に状態を保存
+    // autoPlaySwitch.addEventListener("change", () => {
+    //     chrome.storage.sync.set({ autoPlayEnabled: autoPlaySwitch.checked });
+    // });
+
     var needsUpdate = false;
     await chrome.storage.local.get("config", (result) => {
         let config = result.config;
@@ -584,7 +596,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     target: { tabId: tab.id },
                     files: ['content_anime_official_page.js']
                 }).then((result) => {
-                    chrome.tabs.remove(tab.id);
+                    //chrome.tabs.remove(tab.id);
                     chrome.runtime.sendMessage({ action: 'updateAnimeData' });
                 });
             });

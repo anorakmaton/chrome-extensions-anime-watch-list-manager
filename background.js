@@ -16,7 +16,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     target: { tabId: tab.id },
                     files: ['episode_scraper.js']
                 }).then((result) => {
-                    chrome.tabs.remove(tab.id);
+                    //chrome.tabs.remove(tab.id);
                     console.log(result[0].result);
                    
                     //const updatedPlayList = watchlist.filter(anime => anime.status === 'watching').map(anime => anime.episodes).flat();

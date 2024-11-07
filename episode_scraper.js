@@ -99,6 +99,7 @@ async function episodeScraper(animeList, playList) {
     // console.log([animeList, playList]);
     
     await chrome.storage.local.set({ watchlist: animeList, playList: playList }).then(() => {
+        //console.log(playList);
         sendResponse('エピソードデータを更新しました');
     });
     return true;

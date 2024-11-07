@@ -27,6 +27,7 @@ async function initAnimeData() {
         if (a.title > b.title) return 1;
         return 0;
     });
+    console.log(animeDataList);
     await chrome.storage.local.set({ watchlist: animeDataList, droppedlist: [] });
     return animeDataList;
 }

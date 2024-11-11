@@ -94,9 +94,9 @@ async function episodeScraper(animeList, playList) {
         anime.currentEpisode = anime.episodes.length;
         anime.totalEpisodes = anime.episodes.length;
     }
-    // console.log(animeList);
-    // console.log(playList);
-    // console.log([animeList, playList]);
+   
+    // playListを投稿日でソート
+    playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
     
     await chrome.storage.local.set({ watchlist: animeList, playList: playList }).then(() => {
         //console.log(playList);

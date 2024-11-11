@@ -16,9 +16,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     target: { tabId: tab.id },
                     files: ['episode_scraper.js']
                 }).then((result) => {
-                    //chrome.tabs.remove(tab.id);
+                    chrome.tabs.remove(tab.id);
                     console.log(result[0].result);
-                   
+                    // 最終更新日を更新
+                    chrome.storage.local.get("config", (result) => {
+                        let config = result.config;
+                        if (config === undefined || config.updateDate === undefined) {
+                            config = { updateDate: new Date().toLocaleString() };
+                            console.log(config.updateDate);
+                            chrome.storage.local.set({ "config": config });
+                        }
+                        else {
+                            config.updateDate = new Date().toLocaleString;
+                            chrome.storage.local.set({ config: config });
+                        }
+                    });
                     //const updatedPlayList = watchlist.filter(anime => anime.status === 'watching').map(anime => anime.episodes).flat();
                     // 未取得のエピソードをプレイリストに追加
                     // updatedPlayList.forEach(episode => {

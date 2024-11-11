@@ -47,13 +47,13 @@ async function getAnimeTitleList() {
         const animeOfficialListDocument = await createPageDocument(page);
         const animeOfficialElements = animeOfficialListDocument.querySelectorAll("ul.items li.item")
         animeOfficialElements.forEach(animeOfficialElement => {
-            const title = animeOfficialElement.querySelector('span > div.channel_info > a').title;
+            const title = animeOfficialElement.querySelector('span > div.channel_info > a').textContent.trim();
             const url = animeOfficialElement.querySelector('span > div.channel_info > a').href;
             const imageUrl = animeOfficialElement.querySelector('span > a > img').src;
             animeList.push({ title, url, imageUrl });
         });
     }
-
+    
     return animeList;
 }
 

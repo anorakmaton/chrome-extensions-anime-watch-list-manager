@@ -9,11 +9,29 @@
 </head>
 
 <body>
-  <!-- TODO:連続再生を切り替えるボタンを追加 -->
-  <!-- <label class="switch">
-    <input type="checkbox" id="autoPlaySwitch">
-    <span class="slider"></span>
-  </label> -->
+  <!-- 上部のボタンコンテナー -->
+  <div class="header-container">
+    <!-- 更新ボタン -->
+    <div class="sync-button-container">
+      <span>更新</span>
+      <button id="sync-button">
+        <i class="fas fa-rotate"></i>
+      </button>
+    </div>
+    <!-- 更新日 -->
+    <div class="latest-update-date-container">
+      <span id="latest-update-date"></span>
+    </div>
+    <!-- 連続再生を切り替えるボタン -->
+    <div class="switch-container">
+      <span>次の動画を自動再生</span>
+      <label class="switch">
+        <input type="checkbox" id="autoPlaySwitch">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+  
   <div id="anime-lists">
     <div class="anime-list">
       <button class="toggle-btn active" name="playlist">プレイリスト</button>

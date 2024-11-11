@@ -21,7 +21,7 @@ function showPlayList() {
             //playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
             playList.forEach(episode => {
                 // 有料配信の場合は表示しない
-                console.log(`episode.title: ${episode.title}, episode.isPaid: ${episode.isPaid}`);
+                //console.log(`episode.title: ${episode.title}, episode.isPaid: ${episode.isPaid}`); HACK: showPlayList: episodeを表示
                 if (shouldShowPaidVideoValue === false && episode.isPaid) {
                     return;
                 }
@@ -38,7 +38,7 @@ function showPlayList() {
                     data_episode_idx++;
                 }
                 else {
-                    //console.log(`episode.title: ${episode.title}, episode.freeUntil: ${episode.freeUntil}`);
+                    //console.log(`episode.title: ${episode.title}, episode.freeUntil: ${episode.freeUntil}`); HACK: episodeを表示
                 }
             });
         }
@@ -533,17 +533,33 @@ toggleButtons.forEach(button => {
 });
 
 document.addEventListener('DOMContentLoaded', async function () {
-    // const autoPlaySwitch = document.getElementById("autoPlaySwitch");
+    // 手動更新ボタン
+    const syncButton = document.getElementById('sync-button');
+    syncButton.addEventListener('click', function () {
+        console.log('sync button')
+        chrome.runtime.sendMessage({ action: 'updateAnimeData' });
+    })
+    const autoPlaySwitch = document.getElementById("autoPlaySwitch");
 
-    // // スイッチの状態を取得してチェック状態に反映
-    // chrome.storage.sync.get("autoPlayEnabled", (data) => {
-    //     autoPlaySwitch.checked = data.autoPlayEnabled || false;
-    // });
+    // スイッチの状態を取得してチェック状態に反映
+    chrome.storage.sync.get("autoPlayEnabled", (data) => {
+        autoPlaySwitch.checked = data.autoPlayEnabled || false;
+    });
 
-    // // スイッチの変更時に状態を保存
-    // autoPlaySwitch.addEventListener("change", () => {
-    //     chrome.storage.sync.set({ autoPlayEnabled: autoPlaySwitch.checked });
-    // });
+    // 最終更新日を表示
+    const latestUpdateDate = document.getElementById('latest-update-date');
+    chrome.storage.local.get("config", (result) => {
+        let config = result.config;
+        if (config !== undefined || config.updateDate !== undefined) {
+            latestUpdateDate.textContent = '最終更新日：' + config.updateDate;
+        }
+    });
+
+    // スイッチの変更時に状態を保存
+    autoPlaySwitch.addEventListener("change", () => {
+        chrome.storage.sync.set({ autoPlayEnabled: autoPlaySwitch.checked });
+        console.log(autoPlaySwitch.checked);
+    });
 
     var needsUpdate = false;
     await chrome.storage.local.get("config", (result) => {
@@ -596,7 +612,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     target: { tabId: tab.id },
                     files: ['content_anime_official_page.js']
                 }).then((result) => {
-                    //chrome.tabs.remove(tab.id);
+                    chrome.tabs.remove(tab.id);
                     chrome.runtime.sendMessage({ action: 'updateAnimeData' });
                 });
             });

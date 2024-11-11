@@ -18,7 +18,11 @@ const observer = new MutationObserver(async (mutationsList, observer) => {
             video.addEventListener('ended', async () => {
                 //console.log('動画の再生が終了しました');
                 await updateEpisodeWatched();
-                playNextPlayList();
+                const autoPlayEnabled = await chrome.storage.local.get('autoPlayEnabled');
+                if (autoPlayEnabled) { // 自動再生がONのとき
+                    playNextPlayList();
+                }
+
                 // ここで再生終了時に実行したい処理を記述します
             });
             video.addEventListener('play', () => {

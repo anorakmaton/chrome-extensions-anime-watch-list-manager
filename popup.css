@@ -462,3 +462,30 @@ input:checked + .slider {
 input:checked + .slider:before {
     transform: translateX(20px);
 }
+
+.switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.switch-container > span {
+    margin-right: 5px;
+}
+
+/* ヘッダーのボタンコンテナーのスタイル */
+.header-container {
+    display: flex;
+    align-content: center;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.header-container > div {
+    margin-right: 10px;
+}
+
+.sync-button-container {
+    margin-right: 10px;
+}
+

@@ -70,7 +70,8 @@ async function episodeScraper(animeList, playList) {
                     const isPaid = paidIcon !== null;
                     episode.isPaid = isPaid;
                 }
-            
+                // サムネイルをダウンロードする
+                
             }
             else {
                 // 一致するアニメが見つからなかった場合
@@ -139,6 +140,29 @@ function isSimilar(str1, str2, threshold = 0.8) {
     const rate = similarityRate(str1, str2);
     return rate >= threshold;
 }
+
+async function fetchAndStoreImage(imageUrl, storageKey) {
+    try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        
+        // 画像データをBase64形式に変換
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = function () {
+            const base64data = reader.result;
+            
+            
+            // chrome.storageに画像データを保存
+            chrome.storage.local.set({ [storageKey]: base64data }, () => {
+                console.log("Image saved to chrome.storage with key:", storageKey);
+            });
+        };
+    } catch (error) {
+        console.error("Failed to fetch and store image:", error);
+    }
+}
+
 
 async function returnAnimeList() {
     //chrome.storage.localからアニメのデータを取得

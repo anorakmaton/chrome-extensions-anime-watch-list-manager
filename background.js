@@ -90,7 +90,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 console.log(anime.episodes);
                 // プレイリストをソート
                 playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
-                console.log(playList);
                 
                 chrome.storage.local.set({ watchlist: watchlist, droppedList: droppedList, playList: playList });
             }

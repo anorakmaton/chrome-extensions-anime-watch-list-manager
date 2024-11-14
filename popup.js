@@ -5,11 +5,13 @@ function updateAll() {
 }
 
 function showPlayList() {
-    chrome.storage.local.get({ playList: [] }, (result) => {
-        console.log(result.playList);
+    chrome.storage.local.get({ playList: [], shouldShowPaidVideoValue: [] }, (result) => {
         const playList = result.playList;
+        const shouldShowPaidVideoValue = result.shouldShowPaidVideoValue;
+        console.log(shouldShowPaidVideoValue);
         const unwatchedList = document.getElementById('unwatched-episode');
         const watchedList = document.getElementById('watched-episode');
+        
         unwatchedList.innerHTML = ''; // 以前の内容をクリア
         watchedList.innerHTML = ''; // 以前の内容をクリア
         let currentDate = new Date();
@@ -18,18 +20,25 @@ function showPlayList() {
             // 投稿日が古いに並び替え
             //playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
             playList.forEach(episode => {
+                // 有料配信の場合は表示しない
+                //console.log(`episode.title: ${episode.title}, episode.isPaid: ${episode.isPaid}`); HACK: showPlayList: episodeを表示
+                if (shouldShowPaidVideoValue === false && episode.isPaid) {
+                    return;
+                }
                 // 未視聴のエピソード
                 if (!episode.watched) {
                     const animeCard = createEpisodeCard(episode, data_episode_idx);
                     unwatchedList.appendChild(animeCard);
                     data_episode_idx++;
                 }
-
                 // 視聴済みかつ無料公開中のエピソード
-                if (episode.watched && new Date(episode.freeUntil) >= currentDate) {
+                else if (episode.watched && new Date(episode.freeUntil) >= currentDate) {
                     const animeCard = createEpisodeCard(episode, data_episode_idx);
                     watchedList.appendChild(animeCard);
                     data_episode_idx++;
+                }
+                else {
+                    //console.log(`episode.title: ${episode.title}, episode.freeUntil: ${episode.freeUntil}`); HACK: episodeを表示
                 }
             });
         }
@@ -103,20 +112,20 @@ function populateAnimeLists() {
             });
         }
 
-        const moveToDroppedButtons = document.querySelectorAll('.moveToDroppedButton');
-        const moveToWatchingButtons = document.querySelectorAll('.moveToWatchingButton');
-        moveToDroppedButtons.forEach(button => {
-            button.addEventListener('click', function () {
-                console.log('button.value:', button.value);
-                moveToDropped(button.value); // クリックされたボタンを引数として渡す
-            });
-        });
-        moveToWatchingButtons.forEach(button => {
-            button.addEventListener('click', function () {
-                console.log('button.value:', button.value);
-                moveToWatching(button.value); // クリックされたボタンを引数として渡す
-            });
-        });
+        // const moveToDroppedButtons = document.querySelectorAll('.moveToDroppedButton');
+        // const moveToWatchingButtons = document.querySelectorAll('.moveToWatchingButton');
+        // moveToDroppedButtons.forEach(button => {
+        //     button.addEventListener('click', function () {
+        //         console.log('button.value:', button.value);
+        //         moveToDropped(button.value); // クリックされたボタンを引数として渡す
+        //     });
+        // });
+        // moveToWatchingButtons.forEach(button => {
+        //     button.addEventListener('click', function () {
+        //         console.log('button.value:', button.value);
+        //         moveToWatching(button.value); // クリックされたボタンを引数として渡す
+        //     });
+        // });
 
     });
 }
@@ -177,9 +186,6 @@ function createAnimeCard(anime) {
 
                         moveToWatchingButton.appendChild(moveToWatchingIcon);
                     }
-                    moveToWatchingButton.addEventListener('click', function () {
-                        moveToWatching(moveToWatchingButton.value); // クリックされたボタンを引数として渡す
-                    });
 
                     const moveToDroppedButton = document.createElement('button');
                     moveToDroppedButton.textContent = '視聴切りに移動';
@@ -412,6 +418,21 @@ function createEpisodeCard(episode, idx) {
                         unwatchedButton.appendChild(unwatchedIcon);
                     }
 
+                    const primeVideoButton = document.createElement('button');
+                    primeVideoButton.className = 'episode-button primeVideoButton';
+                    primeVideoButton.title = 'Prime Videoで視聴';
+                    primeVideoButton.addEventListener('click', function () {
+                        const primeVideoUrl = 'https://www.amazon.co.jp/s?k=' + episode.animeTitle + '&i=instant-video';
+                        chrome.tabs.create({ url: primeVideoUrl });
+                    });
+                    {
+                        const primeVideoIcon = document.createElement('img');
+                        primeVideoIcon.className = 'primeVideoIcon';
+                        primeVideoIcon.src = 'images/prime-icon-custom.png';
+
+                        primeVideoButton.appendChild(primeVideoIcon);
+                    }
+
                     const moveToDroppedButton = document.createElement('button');
                     //moveToDroppedButton.textContent = '視聴切り';
                     moveToDroppedButton.className = 'episode-button moveToDroppedButton';
@@ -441,6 +462,7 @@ function createEpisodeCard(episode, idx) {
                     buttonsDiv.appendChild(playButton);
                     buttonsDiv.appendChild(watchedButton);
                     buttonsDiv.appendChild(unwatchedButton);
+                    buttonsDiv.appendChild(primeVideoButton);
                     //buttonsDiv.appendChild(moveToDroppedButton);
                 }
 
@@ -477,33 +499,12 @@ function moveToWatched(title) {
 }
 
 function moveToDropped(title) {
-    chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
-        let watchlist = result.watchlist;
-        let droppedList = result.droppedList;
-        console.log(`watchlist: ${watchlist}, droppedList: ${droppedList}`);
-        let anime = watchlist.find(a => a.title === title);
-        if (anime) {
-            watchlist = watchlist.filter(a => a.title !== title);
-            anime.status = "dropped";
-            droppedList.push(anime);
-            chrome.storage.local.set({ watchlist: watchlist, droppedList: droppedList }, updateAll);
-        }
-    });
+    chrome.runtime.sendMessage({ action: 'moveToDropped', title: title });
 }
 
 function moveToWatching(title) {
-    chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
-        let watchlist = result.watchlist;
-        let droppedList = result.droppedList;
-        console.log(`watchlist: ${watchlist}, droppedList: ${droppedList}`);
-        let anime = droppedList.find(a => a.title === title);
-        if (anime) {
-            droppedList = droppedList.filter(a => a.title !== title);
-            anime.status = "watching";
-            watchlist.push(anime);
-            chrome.storage.local.set({ watchlist: watchlist, droppedList: droppedList }, updateAll);
-        }
-    });
+    chrome.runtime.sendMessage({ action: 'moveToWatching', title: title });
+    
 }
 
 function toggleList(listId) {
@@ -532,6 +533,34 @@ toggleButtons.forEach(button => {
 });
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // 手動更新ボタン
+    const syncButton = document.getElementById('sync-button');
+    syncButton.addEventListener('click', function () {
+        console.log('sync button')
+        chrome.runtime.sendMessage({ action: 'updateAnimeData' });
+    })
+    const autoPlaySwitch = document.getElementById("autoPlaySwitch");
+
+    // スイッチの状態を取得してチェック状態に反映
+    chrome.storage.sync.get("autoPlayEnabled", (data) => {
+        autoPlaySwitch.checked = data.autoPlayEnabled || false;
+    });
+
+    // 最終更新日を表示
+    const latestUpdateDate = document.getElementById('latest-update-date');
+    chrome.storage.local.get("config", (result) => {
+        let config = result.config;
+        if (config !== undefined || config.updateDate !== undefined) {
+            latestUpdateDate.textContent = '最終更新日：' + config.updateDate;
+        }
+    });
+
+    // スイッチの変更時に状態を保存
+    autoPlaySwitch.addEventListener("change", () => {
+        chrome.storage.sync.set({ autoPlayEnabled: autoPlaySwitch.checked });
+        console.log(autoPlaySwitch.checked);
+    });
+
     var needsUpdate = false;
     await chrome.storage.local.get("config", (result) => {
         let config = result.config;
@@ -546,7 +575,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             const updateDate = new Date(config.updateDate);
             const diff = currentDate - updateDate;
             console.log(`diff: ${diff}`);
-            if (diff < 1000 * 60 * 60) {
+            if (diff < 1000 * 60 * 60 * 24) {
                 needsUpdate = false;
             } else {
                 needsUpdate = true;
@@ -571,12 +600,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             });
         }
     });
-
-    //ローカルストレージにデータがない時はアニメリストを初期化
+    
     chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
         const watchlist = result.watchlist;
         const droppedList = result.droppedList;
-        if (watchlist.length === 0 && droppedList.length === 0) {//
+        //ローカルストレージにデータがない時はアニメリストを初期化
+        if (watchlist.length === 0 && droppedList.length === 0) {
             console.log("No data in local storage");
             chrome.tabs.create({ url: 'https://blog.nicovideo.jp/niconews/230372.html', active: false }).then(tab => {
                 chrome.scripting.executeScript({
@@ -584,22 +613,15 @@ document.addEventListener('DOMContentLoaded', async function () {
                     files: ['content_anime_official_page.js']
                 }).then((result) => {
                     chrome.tabs.remove(tab.id);
-                    
-                    chrome.runtime.sendMessage({ action: 'updateAnimeData' }, (response) => {
-                        console.log(response);
-                        chrome.storage.local.get("playList", (result) => {
-                            const playList = result.playList;
-                            // プレイリストを投稿日順にソート
-                            //playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
-                            console.log(playList);
-                            chrome.storage.local.set({ playList: playList }, updateAll);
-                        });
-                    });
+                    chrome.runtime.sendMessage({ action: 'updateAnimeData' });
                 });
             });
         }
         else {
+            console.log(`needsUpdate: ${needsUpdate}`);
+            //needsUpdate = true; // テスト用
             if (needsUpdate) {
+                console.log("Needs update");
                 chrome.runtime.sendMessage({ action: 'updateAnimeData' });
             }
         }
@@ -628,6 +650,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local') {
         // 差分を取得
         showPlayList();
+        populateAnimeLists();
         console.log("storage changed");
     }
 });
@@ -636,16 +659,6 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 chrome.runtime.onInstalled.addListener(() => {
     
 });
-
-// // ポップアップが開かれたときにバックグラウンドにポートを開く
-// const port = chrome.runtime.connect({ name: 'popup' });
-
-// // ポップアップが閉じられるとポートが自動的に切断され、onDisconnectが呼ばれる
-// port.onDisconnect.addListener(() => {
-//     console.log('ポップアップが閉じられました');
-//     // 必要な処理をここに記述します
-//     chrome.runtime.sendMessage({ action: 'popupClosed' });
-// });
-
-// // ポップアップが開かれたときに確認用のメッセージをバックグラウンドに送る
-// port.postMessage({ action: 'popupOpened' });
+//https://www.amazon.co.jp/s?k=%E3%83%80%E3%83%B3%E3%83%80%E3%83%80%E3%83%B3&i=instant-video
+//https://www.amazon.co.jp/gp/video/detail/0RA4Z9670CMEWDNUIVG372RS1Y/ref=atv_dp_btf_el_prime_sd_tv_resume_t1BDAAAAAA0wr0?autoplay=1&t=60
+//https://www.amazon.co.jp/gp/video/detail/0TUBBQQPYCOGYV2PP4I24Q7A28/ref=atv_dp_btf_el_prime_sd_tv_play_t1BDAAAAAA0wr0?autoplay=1&t=0

@@ -315,6 +315,18 @@ body {
     /* サムネイルを非表示 */
 }
 
+/* エピソードカード内のボタンコンテナーのスタイル */
+.episode-buttons {
+    display: flex;
+    justify-content: flex-start;
+    width: 60%;
+}
+/* エピソードカード内のprimeVideoボタンのスタイル */
+img.primeVideoIcon {
+    width: 20px;
+    height: 20px;
+}
+
 /* アニメカード内のエピソードカードの有料アイコンのスタイル */
 .list-content.episode-list .iconPayment {
     display: inline-block;
@@ -351,6 +363,10 @@ body {
     align-content: flex-end;
     margin-right: 10px;
 }
+
+.list-content.episode-list .episode-card .episode-info .episode-buttons {
+    width: unset;
+} 
 
 .list-content.episode-list .episode-card .episode-info .episode-button {
     margin: 0px;
@@ -400,3 +416,76 @@ body {
         scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
     }
 }
+
+/* 連続再生を切り替えるボタンのスタイル */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 20px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #4CAF50;
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+.switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.switch-container > span {
+    margin-right: 5px;
+}
+
+/* ヘッダーのボタンコンテナーのスタイル */
+.header-container {
+    display: flex;
+    align-content: center;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.header-container > div {
+    margin-right: 10px;
+}
+
+.sync-button-container {
+    margin-right: 10px;
+}
+

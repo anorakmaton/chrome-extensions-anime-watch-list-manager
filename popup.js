@@ -1,3 +1,6 @@
+var season = '';
+var currentSeasonData;
+
 function updateAll() {
     showPlayList();
     populateAnimeLists();
@@ -5,6 +8,7 @@ function updateAll() {
 }
 
 function showPlayList() {
+    // TODO:変更したデータ形式に対応させる
     chrome.storage.local.get({ playList: [], shouldShowPaidVideoValue: [] }, (result) => {
         const playList = result.playList;
         const shouldShowPaidVideoValue = result.shouldShowPaidVideoValue;
@@ -45,7 +49,9 @@ function showPlayList() {
     });
 }
 
+// 視聴中アニメリストと視聴切りアニメリストを更新する関数
 function populateAnimeLists() {
+    // TODO:変更したデータ形式に対応させる
     chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
         let watchlist = result.watchlist;
         let droppedList = result.droppedList;
@@ -484,6 +490,7 @@ function createEpisodeCard(episode, idx) {
 }
 
 function moveToWatched(title) {
+    // TODO:変更したデータ形式に対応させる
     chrome.storage.local.get({ watchlist: [] }, (result) => {
         let watchlist = result.watchlist;
         let anime = watchlist.find(a => a.title === title);
@@ -499,10 +506,12 @@ function moveToWatched(title) {
 }
 
 function moveToDropped(title) {
+    // TODO:変更したデータ形式に対応させる
     chrome.runtime.sendMessage({ action: 'moveToDropped', title: title });
 }
 
 function moveToWatching(title) {
+    // TODO:変更したデータ形式に対応させる
     chrome.runtime.sendMessage({ action: 'moveToWatching', title: title });
     
 }
@@ -533,11 +542,14 @@ toggleButtons.forEach(button => {
 });
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // 表示するシーズンを取得する
+    result = await chrome.storage.local.get('season');
+    season = result.season
     // 手動更新ボタン
     const syncButton = document.getElementById('sync-button');
     syncButton.addEventListener('click', function () {
         console.log('sync button')
-        chrome.runtime.sendMessage({ action: 'updateAnimeData' });
+        chrome.runtime.sendMessage({ action: 'updateAnimeData', season: season });
     })
     const autoPlaySwitch = document.getElementById("autoPlaySwitch");
 
@@ -562,7 +574,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     var needsUpdate = false;
-    await chrome.storage.local.get("config", (result) => {
+    await chrome.storage.local.get("config", (result) => { // TODO:変更したデータ形式に対応させる
         let config = result.config;
 
         if (config === undefined || config.updateDate === undefined) {
@@ -590,7 +602,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         animation: 150,
         onEnd: function (evt) {
             console.log(evt.oldIndex, evt.newIndex);
-            chrome.storage.local.get({ watchlist: [] }, (result) => {
+            chrome.storage.local.get({ watchlist: [] }, (result) => { // TODO:変更したデータ形式に対応させる
                 let watchlist = result.watchlist;
                 let playList = watchlist.filter(anime => anime.status === 'watching').map(anime => anime.episodes).flat();
                 const item = playList[evt.oldIndex];
@@ -601,28 +613,20 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
     
-    chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
+    chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => { // TODO:変更したデータ形式に対応させる
         const watchlist = result.watchlist;
         const droppedList = result.droppedList;
         //ローカルストレージにデータがない時はアニメリストを初期化
         if (watchlist.length === 0 && droppedList.length === 0) {
             console.log("No data in local storage");
-            chrome.tabs.create({ url: 'https://blog.nicovideo.jp/niconews/230372.html', active: false }).then(tab => {
-                chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: ['content_anime_official_page.js']
-                }).then((result) => {
-                    chrome.tabs.remove(tab.id);
-                    chrome.runtime.sendMessage({ action: 'updateAnimeData' });
-                });
-            });
+            chrome.runtime.sendMessage({ action: 'initAnimeData', season: season});
         }
         else {
             console.log(`needsUpdate: ${needsUpdate}`);
             //needsUpdate = true; // テスト用
             if (needsUpdate) {
                 console.log("Needs update");
-                chrome.runtime.sendMessage({ action: 'updateAnimeData' });
+                chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season}); // TODO:変更したデータ形式に対応させる
             }
         }
     });
@@ -655,10 +659,26 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-// 拡張機能がインストールされたときに実行される処理
-chrome.runtime.onInstalled.addListener(() => {
-    
-});
+
 //https://www.amazon.co.jp/s?k=%E3%83%80%E3%83%B3%E3%83%80%E3%83%80%E3%83%B3&i=instant-video
 //https://www.amazon.co.jp/gp/video/detail/0RA4Z9670CMEWDNUIVG372RS1Y/ref=atv_dp_btf_el_prime_sd_tv_resume_t1BDAAAAAA0wr0?autoplay=1&t=60
 //https://www.amazon.co.jp/gp/video/detail/0TUBBQQPYCOGYV2PP4I24Q7A28/ref=atv_dp_btf_el_prime_sd_tv_play_t1BDAAAAAA0wr0?autoplay=1&t=0
+
+// chrome.storage.localから画像を取得して表示する
+function loadImageFromStorage(season, key, imgElementId) {
+    chrome.storage.local.get([season], (result) => {
+        if (chrome.runtime.lastError) {
+            console.error("Error loading image:", chrome.runtime.lastError.message);
+        } else if (result[season]) {
+            const imgElement = document.getElementById(imgElementId);
+            imgElement.src = result[season][key].imageBase64; // Base64 データを画像に設定
+        } else {
+            console.log("No image found in storage.");
+        }
+    });
+}
+
+// DOMContentLoaded イベントで画像をロード
+document.addEventListener("DOMContentLoaded", () => {
+    loadImageFromStorage("2024年秋アニメ", "Re:ゼロから始める異世界生活 3rd season 襲撃編", "savedImageDisplay");
+});

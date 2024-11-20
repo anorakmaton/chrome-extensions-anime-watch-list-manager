@@ -3,7 +3,8 @@ async function episodeScraper(animeList, playList) {
     // console.log(playList);
     const parser = new DOMParser();
     console.log('episodeScraper');
-    const baseUrl = 'https://www.nicovideo.jp/tag/2024%E7%A7%8B%E3%82%A2%E3%83%8B%E3%83%A1%E5%85%AC%E5%BC%8F?&sort=f&order=d&page=';
+                     https://www.nicovideo.jp/tag/2024%E5%B9%B4%E7%A7%8B%E3%82%A2%E3%83%8B%E3%83%A1
+    const baseUrl = '?&sort=f&order=d&page=';
     var pager = document.querySelector('.toolbar div.pager');
     var currentPage = pager.querySelector('a.pagerBtn.switchingBtn.active');
     var nextPage = currentPage.nextElementSibling;
@@ -166,8 +167,11 @@ async function fetchAndStoreImage(imageUrl, storageKey) {
 
 async function returnAnimeList() {
     //chrome.storage.localからアニメのデータを取得
+    let result = (await chrome.storage.local.get(['season', 'seasonData']));
+    const season = result.season;
+    const seasonData = result.seasonData[season];
 
-    let animeList = (await chrome.storage.local.get('watchlist'))['watchlist'];
+    let animeList = (await chrome.storage.local.get(season))[season];
     let playList = (await chrome.storage.local.get('playList'))['playList'];
     if (!animeList) {
         console.error('アニメリストが取得できませんでした');

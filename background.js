@@ -23,12 +23,16 @@ function initAnimeData(seasonData) {
 };
 
 // 未取得のエピソードを取得する
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+// chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+async function updateAnimeData(message) {
+
     // TODO:変更したデータ形式に対応させる
     if (message.action === 'updateAnimeData') {
-        const result = await chrome.storage.local.get('seasonData');
-        const seasonAnimeData = result.seasonData[message.season];
-        chrome.storage.local.get({ watchlist: [], playList: [] }, (result) => {
+        console.log('updateAnimeData');
+        const seasonAnimeData = await chrome.storage.local.get('seasonData')[message.season];
+        const targetUrl = seasonAnimeData.nicoVidUrl
+        chrome.storage.local.get(season, (result) => {
+
             const watchlist = result.watchlist;
             console.log("updateAnimeData");
             chrome.tabs.create({ url: 'https://www.nicovideo.jp/tag/2024%E7%A7%8B%E3%82%A2%E3%83%8B%E3%83%A1%E5%85%AC%E5%BC%8F?&sort=f&order=d&page=', active: false }).then(tab => {
@@ -63,7 +67,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         });
     }
     return true;
-});
+};
 
 // 視聴切りタイトルを更新
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -120,67 +124,76 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 //拡張機能がインストールされたときに実行される処理
 chrome.runtime.onInstalled.addListener((details) => {
-    // 現在の日時を取得
-    const currentDate = new Date();
-    let seasonYear = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1;  // 1月が0のため+1
+    // if (details.reason == 'install') {
+        // 現在の日時を取得
+        const currentDate = new Date();
+        let seasonYear = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;  // 1月が0のため+1
 
-    // 現在のシーズンを決定
-    let currentSeason;
-    if (month >= 3 && month <= 5) {
-        currentSeason = "春";
-    } else if (month >= 6 && month <= 8) {
-        currentSeason = "夏";
-    } else if (month >= 9 && month <= 11) {
-        currentSeason = "秋";
-    } else {
-        currentSeason = "冬";
-        // 1月や2月なら前年をシーズンの年度とする
-        if (month <= 2) {
-            seasonYear -= 1;
+        // 現在のシーズンを決定
+        let currentSeason;
+        if (month >= 3 && month <= 5) {
+            currentSeason = "春";
+        } else if (month >= 6 && month <= 8) {
+            currentSeason = "夏";
+        } else if (month >= 9 && month <= 11) {
+            currentSeason = "秋";
+        } else {
+            currentSeason = "冬";
+            // 1月や2月なら前年をシーズンの年度とする
+            if (month <= 2) {
+                seasonYear -= 1;
+            }
         }
-    }
 
-    const currentAnimeSeason = `${seasonYear}年${currentSeason}アニメ`;
-    const currentEncodedString = encodeURIComponent(currentAnimeSeason);
-    const currentAnimeSeasonData = { 
-        "seasonCode": String(seasonYear) + String(seasonCode[currentSeason]), 
-        "seasonName": currentAnimeSeason, 
-        "nicoVidUrl": nicoVidBaseURL + currentEncodedString, 
-        "nicoDicUrl": nicoDicBaseURL + currentEncodedString 
-    }
+        const currentAnimeSeason = `${seasonYear}年${currentSeason}アニメ`;
+        const currentVidEncodedString = encodeURIComponent(`${seasonYear}${currentSeason}アニメ公式`);
+        const currentDicEncodedString = encodeURIComponent(`${seasonYear}年${currentSeason}アニメ`);
+        const currentAnimeSeasonData = { 
+            "seasonCode": String(seasonYear) + String(seasonCode[currentSeason]), 
+            "seasonName": currentAnimeSeason, 
+            "nicoVidUrl": nicoVidBaseURL + currentVidEncodedString, 
+            "nicoDicUrl": nicoDicBaseURL + currentDicEncodedString 
+        }
 
-    // 次のシーズンを決定
-    let nextSeason;
-    let nextSeasonYear = seasonYear;
-    if (currentSeason === "春") {
-        nextSeason = "夏";
-    } else if (currentSeason === "夏") {
-        nextSeason = "秋";
-    } else if (currentSeason === "秋") {
-        nextSeason = "冬";
-    } else {
-        nextSeason = "春";
-        nextSeasonYear += 1;  // 冬の次は春なので、年度が変わる
-    }
+        // 次のシーズンを決定
+        let nextSeason;
+        let nextSeasonYear = seasonYear;
+        if (currentSeason === "春") {
+            nextSeason = "夏";
+        } else if (currentSeason === "夏") {
+            nextSeason = "秋";
+        } else if (currentSeason === "秋") {
+            nextSeason = "冬";
+        } else {
+            nextSeason = "春";
+            nextSeasonYear += 1;  // 冬の次は春なので、年度が変わる
+        }
 
-    const nextAnimeSeason = `${nextSeasonYear}年${nextSeason}アニメ`;
-    const nextEncodedString = encodeURIComponent(nextAnimeSeason);
-    const nextAnimeSeasonData = { 
-        "seasonCode": String(nextSeasonYear) + String(seasonCode[nextSeason]), 
-        "seasonName": nextAnimeSeason, 
-        "nicoVidUrl": nicoVidBaseURL + nextEncodedString, 
-        "nicoDicUrl": nicoDicBaseURL + nextEncodedString 
-    }
-    console.log(currentAnimeSeasonData);
-    console.log(nextAnimeSeasonData);
-    const seasonData = {}
-    seasonData[currentAnimeSeason] = currentAnimeSeasonData;
-    seasonData[nextAnimeSeason] = nextAnimeSeasonData;
-    //シーズン情報をストレージに保存
-    chrome.storage.local.set({ season: currentAnimeSeason, currentAnimeSeason: currentAnimeSeason, seasonData: seasonData }, () => {
-        initAnimeData(currentAnimeSeasonData);
-    });
+        const nextAnimeSeason = `${nextSeasonYear}年${nextSeason}アニメ`;
+        const nextVidEncodedString = encodeURIComponent(`${nextSeasonYear}${nextSeason}アニメ公式`);
+        const nextDicEncodedString = encodeURIComponent(`${nextSeasonYear}年${nextSeason}アニメ`);
+        const nextAnimeSeasonData = { 
+            "seasonCode": String(nextSeasonYear) + String(seasonCode[nextSeason]), 
+            "seasonName": nextAnimeSeason, 
+            "nicoVidUrl": nicoVidBaseURL + nextVidEncodedString, 
+            "nicoDicUrl": nicoDicBaseURL + nextDicEncodedString 
+        }
+        console.log(currentAnimeSeasonData);
+        console.log(nextAnimeSeasonData);
+        const seasonData = {}
+        seasonData[currentAnimeSeason] = currentAnimeSeasonData;
+        seasonData[nextAnimeSeason] = nextAnimeSeasonData;
+        //シーズン情報をストレージに保存
+        chrome.storage.local.set({ season: currentAnimeSeason, currentAnimeSeason: currentAnimeSeason, seasonData: seasonData }, () => {
+            initAnimeData(currentAnimeSeasonData);
+        });
+    
+    // else if (details.reason == 'update') {
+    //     const season = chrome.storage.local.get('season')['season'];
+    //     updateAnimeData({ action: 'updateAnimeData' , season: season})
+    //     //chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season});
+    // }    
 });
 
 const nicoVidBaseURL = "https://www.nicovideo.jp/tag/";

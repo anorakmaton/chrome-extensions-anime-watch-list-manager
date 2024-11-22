@@ -13,7 +13,7 @@
       display: block;
       margin: 10px 0 5px;
     }
-    input {
+    input , select {
       width: 100%;
       padding: 8px;
       margin-bottom: 10px;
@@ -36,20 +36,19 @@
 <body>
   <h1>拡張機能の設定</h1>
   
-  <!-- アニメシリーズまとめURL -->
-  <label for="seriesUrl">アニメシリーズまとめURL:</label>
-  <input type="url" id="seriesUrl" placeholder="シリーズURLを入力" />
+  <!-- 表示するシーズンを選択 -->
+  <label for="seriesUrl">表示するアニメ期を選択</label>
+  <select name="seasons" id="season-select">
+  </select>
 
-  <!-- 今期のエピソード一覧URL -->
-  <label for="episodeListUrl">今期のエピソード一覧URL:</label>
-  <input type="url" id="episodeListUrl" placeholder="エピソード一覧URLを入力" />
-
+  <!-- シーズンを更新するボタン -->
+  <label for="seasonSyncButton">最新のシーズンを取得</label>
+  <button id="seasonSyncBtn">取得</button>
+  
   <!-- 有料動画を表示するかどうかを切り替えるボタン -->
   <label for="shouldShowPaidVideo">有料動画を表示する:</label>
   <input type="checkbox" id="shouldShowPaidVideo" checked="true" />
-
   <button id="saveBtn">保存</button>
-
   <script src="options.js"></script>
 </body>
 </html>

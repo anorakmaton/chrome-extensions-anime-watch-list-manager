@@ -1,24 +1,37 @@
+var season = '';
+var currentSeasonData;
+
 function updateAll() {
     showPlayList();
     populateAnimeLists();
     //showPlayList();
 }
 
-function showPlayList() {
-    chrome.storage.local.get({ playList: [], shouldShowPaidVideoValue: [] }, (result) => {
-        const playList = result.playList;
+async function showPlayList() {
+    const season = await getLocal('season');
+    // TODO:変更したデータ形式に対応させる
+    chrome.storage.local.get([season, 'shouldShowPaidVideoValue'], (result) => {
+        const currentAnimeSeasonData = result[season];
+        const currentAnimeSeasonArray = Object.values(currentAnimeSeasonData);
         const shouldShowPaidVideoValue = result.shouldShowPaidVideoValue;
         console.log(shouldShowPaidVideoValue);
         const unwatchedList = document.getElementById('unwatched-episode');
         const watchedList = document.getElementById('watched-episode');
-        
+        var playList = [];
         unwatchedList.innerHTML = ''; // 以前の内容をクリア
         watchedList.innerHTML = ''; // 以前の内容をクリア
         let currentDate = new Date();
         let data_episode_idx = 0;
-        if (Array.isArray(playList)) {
-            // 投稿日が古いに並び替え
-            //playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+        if (currentAnimeSeasonArray.length > 0) {
+            // アニメタイトルの配列からすべてのエピソードをプレイリストに追加
+            currentAnimeSeasonArray.forEach((anime) => {
+                anime.episodes.forEach((episode) => {
+                    playList.push(episode);
+                });
+            });
+
+            // 投稿日が古い順に並び替え
+            playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
             playList.forEach(episode => {
                 // 有料配信の場合は表示しない
                 //console.log(`episode.title: ${episode.title}, episode.isPaid: ${episode.isPaid}`); HACK: showPlayList: episodeを表示
@@ -45,10 +58,25 @@ function showPlayList() {
     });
 }
 
-function populateAnimeLists() {
-    chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
-        let watchlist = result.watchlist;
-        let droppedList = result.droppedList;
+// 視聴中アニメリストと視聴切りアニメリストを更新する関数
+async function populateAnimeLists() {
+    result = await chrome.storage.local.get('season');
+    const season = result.season;
+    // TODO:変更したデータ形式に対応させる
+    chrome.storage.local.get(season, (result) => {
+        let currentAnimeSeasonData = result[season];
+        let currentAnimeSeasonArray = Object.values(currentAnimeSeasonData);
+        const watchlist = [];
+        const droppedList = [];
+        // currentAnimeSeasonArrayからwatchlist,droppedListを作成する
+        currentAnimeSeasonArray.forEach((anime) => {
+            if (anime.status == 'watching') {
+                watchlist.push(anime);
+            } else {
+                droppedList.push(anime);
+            }
+        });
+
         const watchingAnimeListContainer = document.getElementById('watching-anime-list');
         const droppedAnimeListContainer = document.getElementById('dropped-anime-list');
         let watchingAnimeList = document.querySelectorAll('#watching-anime-list > div');
@@ -88,29 +116,29 @@ function populateAnimeLists() {
             idx++;
         });
 
-        watchingAnimeList = document.querySelectorAll('#watching-anime-list > div');
+        //watchingAnimeList = document.querySelectorAll('#watching-anime-list > div');
         // 以前のクラス名を復元
-        if (watchingAnimeList.length !== 0 && Object.keys(ClassNameList).length > 0) {
-            watchingAnimeList.forEach((div) => {
-                const idx = div.getAttribute('data-anime-index');
-                const animeCard = div.querySelector('.anime-card');
-                const episodeList = div.querySelector('.list-content.episode-list');
+        // if (watchingAnimeList.length !== 0 && Object.keys(ClassNameList).length > 0) {
+        //     watchingAnimeList.forEach((div) => {
+        //         const idx = div.getAttribute('data-anime-index');
+        //         const animeCard = div.querySelector('.anime-card');
+        //         const episodeList = div.querySelector('.list-content.episode-list');
 
-                animeCard.className = ClassNameList[idx].animeCardClassName;
-                episodeList.className = ClassNameList[idx].episodeListClassName;
-            });
-        }
+        //         animeCard.className = ClassNameList[idx].animeCardClassName;
+        //         episodeList.className = ClassNameList[idx].episodeListClassName;
+        //     });
+        // }
 
-        droppedAnimeList = document.querySelectorAll('#dropped-anime-list > div');
-        if (droppedAnimeList.length !== 0 && Object.keys(ClassNameList).length > 0) {
-            droppedAnimeList.forEach((div) => {
-                const idx = div.getAttribute('data-anime-index');
-                const animeCard = div.querySelector('.anime-card');
-                const episodeList = div.querySelector('.list-content.episode-list');
-                animeCard.className = ClassNameList[idx].animeCardClassName;
-                episodeList.className = ClassNameList[idx].episodeListClassName;
-            });
-        }
+        // droppedAnimeList = document.querySelectorAll('#dropped-anime-list > div');
+        // if (droppedAnimeList.length !== 0 && Object.keys(ClassNameList).length > 0) {
+        //     droppedAnimeList.forEach((div) => {
+        //         const idx = div.getAttribute('data-anime-index');
+        //         const animeCard = div.querySelector('.anime-card');
+        //         const episodeList = div.querySelector('.list-content.episode-list');
+        //         animeCard.className = ClassNameList[idx].animeCardClassName;
+        //         episodeList.className = ClassNameList[idx].episodeListClassName;
+        //     });
+        // }
 
         // const moveToDroppedButtons = document.querySelectorAll('.moveToDroppedButton');
         // const moveToWatchingButtons = document.querySelectorAll('.moveToWatchingButton');
@@ -140,7 +168,15 @@ function createAnimeCard(anime) {
         episodeList.className = 'list-content episode-list';
         {
             let episode_idx = 0;
-
+            // エピソードをURLの番号から投稿日順にソート
+            anime.episodes.sort((a, b) => {
+                const getNumber = (url) => {
+                    const match = url.match(/so(\d+)/);
+                    return match ? parseInt(match[1], 10) : 0; // 数字を取得し、整数に変換
+                };
+        
+                return getNumber(a.url) - getNumber(b.url); // 数字で比較
+            });
             anime.episodes.forEach((episode) => {
                 const episodeCard = createEpisodeCard(episode, episode_idx);
                 episodeList.appendChild(episodeCard);
@@ -154,11 +190,30 @@ function createAnimeCard(anime) {
             const imgDiv = document.createElement('div');
             imgDiv.className = 'thumbnail';
             {
-                const img = document.createElement('img');
-                img.src = anime.imageUrl || ""; // デフォルト画像を設定
-                img.alt = anime.title;
-
-                imgDiv.appendChild(img);
+                if (anime.imageBase64) {
+                    const img = document.createElement('img');
+                    img.src = anime.imageBase64; // 画像を設定
+                    img.alt = anime.title;
+                
+                    imgDiv.appendChild(img);
+                } else {
+                    // 画像がない場合、タイトルを代わりに表示
+                    const titleDiv = document.createElement('div');
+                    titleDiv.textContent = anime.title;
+                    titleDiv.style.display = 'flex';
+                    titleDiv.style.alignItems = 'center';
+                    titleDiv.style.justifyContent = 'center';
+                    titleDiv.style.borderRadius = '5px'; // スタイルを画像と揃える
+                    titleDiv.style.marginRight = '10px';
+                    titleDiv.style.width = '160px';
+                    titleDiv.style.height = '90px';
+                    titleDiv.style.backgroundColor = '#f0f0f0'; // 背景色を設定
+                    titleDiv.style.color = '#333'; // 文字色を設定
+                    titleDiv.style.fontSize = '14px';
+                    titleDiv.style.textAlign = 'center';
+                
+                    imgDiv.appendChild(titleDiv);
+                }
             }
 
             const mainDiv = document.createElement('div');
@@ -381,13 +436,12 @@ function createEpisodeCard(episode, idx) {
                     watchedButton.className = 'episode-button watchedButton';
                     watchedButton.value = episode.title;
                     watchedButton.title = '視聴済みにする';
-                    watchedButton.addEventListener('click', function () {
-                        chrome.storage.local.get({ watchlist: [], playList: [] }, (result) => {
-                            let watchlist = result.watchlist;
-                            let playList = result.playList;
-                            watchlist.find(a => a.title === episode.animeTitle).episodes.find(e => e.title === unwatchedButton.value).watched = true;
-                            playList.find(e => e.title === unwatchedButton.value).watched = true;
-                            chrome.storage.local.set({ watchlist: watchlist, playList: playList }, showPlayList);
+                    watchedButton.addEventListener('click', async function () {
+                        const season = await getLocal('season');
+                        chrome.storage.local.get(season, (result) => {
+                            let currentSeasonData = result[season];
+                            currentSeasonData[episode.animeTitle].episodes.find(e => e.title === unwatchedButton.value).watched = true;
+                            chrome.storage.local.set({ [season]: currentSeasonData }, showPlayList);
                         });
                     });
                     {
@@ -402,13 +456,12 @@ function createEpisodeCard(episode, idx) {
                     unwatchedButton.className = 'episode-button unwatchedButton';
                     unwatchedButton.value = episode.title;
                     unwatchedButton.title = '未視聴にする';
-                    unwatchedButton.addEventListener('click', function () {
-                        chrome.storage.local.get({ watchlist: [], playList: [] }, (result) => {
-                            let watchlist = result.watchlist;
-                            let playList = result.playList;
-                            watchlist.find(a => a.title === episode.animeTitle).episodes.find(e => e.title === unwatchedButton.value).watched = false;
-                            playList.find(e => e.title === unwatchedButton.value).watched = false;
-                            chrome.storage.local.set({ watchlist: watchlist, playList: playList }, showPlayList);
+                    unwatchedButton.addEventListener('click', async function () {
+                        const season = await getLocal('season');
+                        chrome.storage.local.get(season, (result) => {
+                            let currentSeasonData = result[season];
+                            currentSeasonData[episode.animeTitle].episodes.find(e => e.title === unwatchedButton.value).watched = false;
+                            chrome.storage.local.set({ [season]: currentSeasonData }, showPlayList);
                         });
                     });
                     {
@@ -484,6 +537,7 @@ function createEpisodeCard(episode, idx) {
 }
 
 function moveToWatched(title) {
+    // TODO:変更したデータ形式に対応させる
     chrome.storage.local.get({ watchlist: [] }, (result) => {
         let watchlist = result.watchlist;
         let anime = watchlist.find(a => a.title === title);
@@ -499,10 +553,12 @@ function moveToWatched(title) {
 }
 
 function moveToDropped(title) {
+    // TODO:変更したデータ形式に対応させる
     chrome.runtime.sendMessage({ action: 'moveToDropped', title: title });
 }
 
 function moveToWatching(title) {
+    // TODO:変更したデータ形式に対応させる
     chrome.runtime.sendMessage({ action: 'moveToWatching', title: title });
     
 }
@@ -527,17 +583,21 @@ toggleButtons.forEach(button => {
     button.addEventListener('click', function () {
         // ボタンのvalue属性を取得
         const listId = button.name;
-        updateAll();
+        //updateAll();
         toggleList(listId);
     });
 });
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // 表示するシーズンを取得する
+    result = await chrome.storage.local.get('season');
+    const season = result['season'];
+
     // 手動更新ボタン
     const syncButton = document.getElementById('sync-button');
     syncButton.addEventListener('click', function () {
         console.log('sync button')
-        chrome.runtime.sendMessage({ action: 'updateAnimeData' });
+        chrome.runtime.sendMessage({ action: 'updateAnimeData', season: season });
     })
     const autoPlaySwitch = document.getElementById("autoPlaySwitch");
 
@@ -548,10 +608,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // 最終更新日を表示
     const latestUpdateDate = document.getElementById('latest-update-date');
-    chrome.storage.local.get("config", (result) => {
-        let config = result.config;
-        if (config !== undefined || config.updateDate !== undefined) {
-            latestUpdateDate.textContent = '最終更新日：' + config.updateDate;
+    chrome.storage.local.get("seasonData", (result) => {
+        let seasonData = result.seasonData;
+        let currentSeasonData = seasonData[season];
+        if (currentSeasonData.lastUpdateDate !== undefined || currentSeasonData.lastUpdateDate !== undefined) {
+            latestUpdateDate.textContent = '最終更新日：' + currentSeasonData.lastUpdateDate;
         }
     });
 
@@ -562,25 +623,26 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     var needsUpdate = false;
-    await chrome.storage.local.get("config", (result) => {
-        let config = result.config;
+    await chrome.storage.local.get("seasonData", (result) => { // TODO:変更したデータ形式に対応させる
+        let seasonData = result.seasonData;
+        let currentSeasonData = seasonData[season];
 
-        if (config === undefined || config.updateDate === undefined) {
-            config = { updateDate: new Date().toLocaleString() };
-            console.log(config.updateDate);
-            chrome.storage.local.set({ "config": config });
+        if (currentSeasonData.lastUpdateDate === undefined || currentSeasonData.lastUpdateDate === undefined) {
+            currentSeasonData.lastUpdateDate = new Date().toLocaleDateString();
+            chrome.storage.local.set({ seasonData: seasonData });
         }
         else {
             const currentDate = new Date();
-            const updateDate = new Date(config.updateDate);
+            const updateDate = new Date(currentSeasonData.lastUpdateDate);
             const diff = currentDate - updateDate;
             console.log(`diff: ${diff}`);
             if (diff < 1000 * 60 * 60 * 24) {
+            //if (diff < 1000) {
                 needsUpdate = false;
             } else {
                 needsUpdate = true;
-                config.updateDate = new Date().toLocaleString;
-                chrome.storage.local.set({ config: config });
+                currentSeasonData.lastUpdateDate = new Date().toLocaleDateString();
+                chrome.storage.local.set({ seasonData: seasonData });
             }
         }
     });
@@ -590,7 +652,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         animation: 150,
         onEnd: function (evt) {
             console.log(evt.oldIndex, evt.newIndex);
-            chrome.storage.local.get({ watchlist: [] }, (result) => {
+            chrome.storage.local.get({ watchlist: [] }, (result) => { // TODO:変更したデータ形式に対応させる
                 let watchlist = result.watchlist;
                 let playList = watchlist.filter(anime => anime.status === 'watching').map(anime => anime.episodes).flat();
                 const item = playList[evt.oldIndex];
@@ -601,32 +663,24 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
     
-    chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
-        const watchlist = result.watchlist;
-        const droppedList = result.droppedList;
+    chrome.storage.local.get(season, (result) => { // TODO:変更したデータ形式に対応させる
+        const currentSeasonData = result[season];
+        const currentSeasonArray = Object.values(currentSeasonData);
         //ローカルストレージにデータがない時はアニメリストを初期化
-        if (watchlist.length === 0 && droppedList.length === 0) {
+        if (currentSeasonArray.length === 0 && currentSeasonArray.length === 0) {
             console.log("No data in local storage");
-            chrome.tabs.create({ url: 'https://blog.nicovideo.jp/niconews/230372.html', active: false }).then(tab => {
-                chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: ['content_anime_official_page.js']
-                }).then((result) => {
-                    chrome.tabs.remove(tab.id);
-                    chrome.runtime.sendMessage({ action: 'updateAnimeData' });
-                });
-            });
+            chrome.runtime.sendMessage({ action: 'initAnimeData', season: season});
         }
         else {
             console.log(`needsUpdate: ${needsUpdate}`);
             //needsUpdate = true; // テスト用
             if (needsUpdate) {
                 console.log("Needs update");
-                chrome.runtime.sendMessage({ action: 'updateAnimeData' });
+                chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season}); // TODO:変更したデータ形式に対応させる
             }
         }
     });
-    showPlayList();
+    showPlayList(season);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -655,10 +709,40 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-// 拡張機能がインストールされたときに実行される処理
-chrome.runtime.onInstalled.addListener(() => {
-    
-});
+
 //https://www.amazon.co.jp/s?k=%E3%83%80%E3%83%B3%E3%83%80%E3%83%80%E3%83%B3&i=instant-video
 //https://www.amazon.co.jp/gp/video/detail/0RA4Z9670CMEWDNUIVG372RS1Y/ref=atv_dp_btf_el_prime_sd_tv_resume_t1BDAAAAAA0wr0?autoplay=1&t=60
 //https://www.amazon.co.jp/gp/video/detail/0TUBBQQPYCOGYV2PP4I24Q7A28/ref=atv_dp_btf_el_prime_sd_tv_play_t1BDAAAAAA0wr0?autoplay=1&t=0
+
+// chrome.storage.localから画像を取得して表示する
+function loadImageFromStorage(season, key, imgElementId) {
+    chrome.storage.local.get([season], (result) => {
+        if (chrome.runtime.lastError) {
+            console.error("Error loading image:", chrome.runtime.lastError.message);
+        } else if (result[season]) {
+            const imgElement = document.getElementById(imgElementId);
+            imgElement.src = result[season][key].imageBase64; // Base64 データを画像に設定
+        } else {
+            console.log("No image found in storage.");
+        }
+    });
+}
+
+// DOMContentLoaded イベントで画像をロード
+// document.addEventListener("DOMContentLoaded", () => {
+//     loadImageFromStorage("2024年秋アニメ", "Re:ゼロから始める異世界生活 3rd season 襲撃編", "savedImageDisplay");
+// });
+
+async function getLocal(key) {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(key, (result) => {
+            if (chrome.runtime.lastError) {
+                // エラーが発生した場合は reject で処理
+                reject(chrome.runtime.lastError);
+            } else {
+                // 値を返す
+                resolve(result[key]);
+            }
+        });
+    });
+}

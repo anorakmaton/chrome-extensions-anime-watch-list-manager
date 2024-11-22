@@ -3,7 +3,7 @@
   "name": "Anime Watchlist Manager",
   "version": "1.0.0",
   "description": "Manage your anime watching progress and automatically play the next episode.",
-  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting", "tabs"],
   "action": {
     "default_popup": "popup.html"
   },
@@ -17,8 +17,8 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://www.nicovideo.jp/tag/2024%E7%A7%8B%E3%82%A2%E3%83%8B%E3%83%A1%E5%85%AC%E5%BC%8F?sort=f&order=d"], 
-      "js": ["content.js"]
+      "matches": ["https://www.nicovideo.jp/tag/*"], 
+      "js": ["episode_scraper.js"]
     },
     {
       "matches": ["https://www.nicovideo.jp/watch/*"], 
@@ -28,12 +28,14 @@
   "host_permissions": [
     "https://www.nicovideo.jp/*",
     "https://ch.nicovideo.jp/*",
-    "https://blog.nicovideo.jp/*"
+    "https://blog.nicovideo.jp/*",
+    "https://dic.nicovideo.jp/*",
+    "https://secure-dcdn.cdn.nimg.jp/comch/channel-icon/128x128/*"
   ],
   "web_accessible_resources": [
         {
-            "resources": ["Sortable.min.js"],
-            "matches": ["<all_urls>"]
+          "resources": ["Sortable.min.js"],
+          "matches": ["<all_urls>"]
         }
     ]
 }

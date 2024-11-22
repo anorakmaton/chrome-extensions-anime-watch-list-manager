@@ -190,11 +190,30 @@ function createAnimeCard(anime) {
             const imgDiv = document.createElement('div');
             imgDiv.className = 'thumbnail';
             {
-                const img = document.createElement('img');
-                img.src = anime.imageBase64 || ""; // デフォルト画像を設定
-                img.alt = anime.title;
-
-                imgDiv.appendChild(img);
+                if (anime.imageBase64) {
+                    const img = document.createElement('img');
+                    img.src = anime.imageBase64; // 画像を設定
+                    img.alt = anime.title;
+                
+                    imgDiv.appendChild(img);
+                } else {
+                    // 画像がない場合、タイトルを代わりに表示
+                    const titleDiv = document.createElement('div');
+                    titleDiv.textContent = anime.title;
+                    titleDiv.style.display = 'flex';
+                    titleDiv.style.alignItems = 'center';
+                    titleDiv.style.justifyContent = 'center';
+                    titleDiv.style.borderRadius = '5px'; // スタイルを画像と揃える
+                    titleDiv.style.marginRight = '10px';
+                    titleDiv.style.width = '160px';
+                    titleDiv.style.height = '90px';
+                    titleDiv.style.backgroundColor = '#f0f0f0'; // 背景色を設定
+                    titleDiv.style.color = '#333'; // 文字色を設定
+                    titleDiv.style.fontSize = '14px';
+                    titleDiv.style.textAlign = 'center';
+                
+                    imgDiv.appendChild(titleDiv);
+                }
             }
 
             const mainDiv = document.createElement('div');

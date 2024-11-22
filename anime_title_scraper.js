@@ -61,14 +61,14 @@ async function getAnimeData(season) {
                     });
                     
                     promises.push(promise); // Promise をリストに追加
-                } else { 
-                    const animeData = { 
-                        ...animeTemplate, 
-                        title: animeTitle, 
-                    };
-                    animeList[animeTitle] = animeData;
-                    console.log('chLink要素が見つかりませんでした');
-                }
+                } 
+            } else { 
+                const animeData = { 
+                    ...animeTemplate, 
+                    title: animeTitle, 
+                };
+                animeList[animeTitle] = animeData;
+                console.log('chLink要素が見つかりませんでした');
             }
         })
     });

@@ -11,18 +11,19 @@ const observer = new MutationObserver(async (mutationsList, observer) => {
     video = document.querySelector("div > video");
     const title = document.querySelector('div.d_flex.flex-d_column.gap_base h1');
     if (video && title) {
+        observer.disconnect(); // 見つかったら監視を終了
         dbExists = await getEpisodeData(title.textContent);
         console.log('dbExists:', dbExists);
-        observer.disconnect(); // 見つかったら監視を終了
+        
         if (dbExists) {
             video.addEventListener('ended', async () => {
                 //console.log('動画の再生が終了しました');
-                await updateEpisodeWatched();
                 const autoPlayEnabled = await chrome.storage.local.get('autoPlayEnabled');
                 if (autoPlayEnabled) { // 自動再生がONのとき
-                    playNextPlayList();
+                    await playNextPlayList();
+                    console.log('次の動画を再生');
                 }
-
+                await updateEpisodeWatched()
                 // ここで再生終了時に実行したい処理を記述します
             });
             video.addEventListener('play', () => {
@@ -32,7 +33,7 @@ const observer = new MutationObserver(async (mutationsList, observer) => {
             video.addEventListener('pause', () => {
                 //console.log('動画の再生が一時停止しました');
                 // ここで一時停止時に実行したい処理を記述します
-                logLastTime(episodeData.title, animeData.title);
+                //logLastTime(episodeData.title, animeData.title);
             });
             video.addEventListener('seeked', () => {
                 //console.log('動画の再生位置を変更しました');
@@ -50,9 +51,11 @@ observer.observe(document.body, { childList: true, subtree: true });
 
 // エピソードデータを取得
 async function getEpisodeData(title) {
-    await chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
-        watchlist = result.watchlist;
-        watchlist.forEach(anime => {
+    const season = await getLocal('season');
+    chrome.storage.local.get({ [season]: [], shouldShowPaidVideoValue: [] }, async (result) => {
+        const seasonData = result[season];
+        const seasonAnimeArray = Object.values(seasonData);
+        seasonAnimeArray.forEach(anime => {
             anime.episodes.forEach(episode => {
                 if (episode.title === title) {
                     episodeData = episode;
@@ -73,46 +76,68 @@ async function getEpisodeData(title) {
 
 // エピソードデータを更新
 const timeDiff = 10; // 10秒以上再生したら更新
-function updateEpisodeTime(time) {
+async function updateEpisodeTime(time) {
     if (time - episodeData.lastTime > timeDiff) {
-        chrome.storage.local.get({ watchlist: [], playList: [] }, (result) => {
-            const watchlist = result.watchlist;
-            const playList = result.playList;
+        const season = await getLocal('season');
+        chrome.storage.local.get({ [season]: [], shouldShowPaidVideoValue: [] }, async (result) => {
+            const seasonData = result[season];
+            const seasonAnimeArray = Object.values(seasonData);
             episodeData.lastTime = time;
-            watchlist.find(anime => anime.title === animeData.title).episodes.find(episode => episode.title === episodeData.title).lastTime = time;
-            playList.find(episode => episode.title === episodeData.title).lastTime = time;
-
-            chrome.storage.local.set({ watchlist: watchlist, playList: playList });
+            seasonAnimeArray.find(anime => anime.title === animeData.title).episodes.find(episode => episode.title === episodeData.title).lastTime = time;
+            chrome.storage.local.set({ [season]: seasonData });
         });
     }
 }
 
 async function updateEpisodeWatched() {
-    await chrome.storage.local.get({ watchlist: [], playList: [] }, async (result) => {
-        const watchlist = result.watchlist;
-        const playList = result.playList;
-        watchlist.find(anime => anime.title === animeData.title).episodes.find(episode => episode.title === episodeData.title).watched = true;
-        playList.find(episode => episode.title === episodeData.title).watched = true;
-        await chrome.storage.local.set({ watchlist: watchlist, playList: playList });
+    const season = await getLocal('season');
+    chrome.storage.local.get({ [season]: [], shouldShowPaidVideoValue: [] }, async (result) => {
+        const seasonData = result[season];
+        const seasonAnimeArray = Object.values(seasonData);
+        seasonAnimeArray.find(anime => anime.title === animeData.title).episodes.find(episode => episode.title === episodeData.title).watched = true;
+        
+        await chrome.storage.local.set({ [season]: seasonData });
     });
     console.log('エピソードを視聴済みに設定しました');
 }
 
-function logLastTime(episodeTitle, animeTitle) {
-    chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
-        watchlist = result.watchlist;
-        var episodeData;
-        episodeData = watchlist.find(anime => anime.title === animeTitle).episodes.find(episode => episode.title === episodeTitle);
-        const time = watchlist.find(anime => anime.title === animeData.title).episodes.find(episode => episode.title === episodeTitle).lastTime;
-        console.log('time:', time);
-    });
-}
+// function logLastTime(episodeTitle, animeTitle) {
+//     chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
+//         watchlist = result.watchlist;
+//         var episodeData;
+//         episodeData = watchlist.find(anime => anime.title === animeTitle).episodes.find(episode => episode.title === episodeTitle);
+//         const time = watchlist.find(anime => anime.title === animeData.title).episodes.find(episode => episode.title === episodeTitle).lastTime;
+//         console.log('time:', time);
+//     });
+// }
 
-function playNextPlayList() {
-    chrome.storage.local.get({ playList: [], shouldShowPaidVideoValue: [] }, (result) => {
-        const playList = result.playList;
+async function playNextPlayList() {
+    const season = await getLocal('season');
+    chrome.storage.local.get({ [season]: [], shouldShowPaidVideoValue: [] }, (result) => {
+        const seasonAnimeData = result[season];
+        const seasonAnimeArray = Object.values(seasonAnimeData);
         const shouldShowPaidVideoValue = result.shouldShowPaidVideoValue;
+        let playList = [];
+        seasonAnimeArray.forEach((anime) => {
+            anime.episodes.forEach((episode) => {
+                if (shouldShowPaidVideoValue === false ) {
+                    if (!episode.isPaid) {
+                        if (!episode.watched) {
+                            playList.push(episode);
+                        }
+                    }
+                } else {
+                    if (!episode.watched) {
+                        playList.push(episode);
+                    }
+                }  
+            });
+        });
+        playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+   
         if (playList.length > 0) {
+            console.log(playList);
+            console.log(episodeData.title);
             const nowIdx = playList.findIndex(episode => episode.title === episodeData.title);
             if (nowIdx === -1) {
                 console.log('再生リストに現在のエピソードが見つかりません');
@@ -142,3 +167,16 @@ function playNextPlayList() {
     });
 }
 
+async function getLocal(key) {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(key, (result) => {
+            if (chrome.runtime.lastError) {
+                // エラーが発生した場合は reject で処理
+                reject(chrome.runtime.lastError);
+            } else {
+                // 値を返す
+                resolve(result[key]);
+            }
+        });
+    });
+}

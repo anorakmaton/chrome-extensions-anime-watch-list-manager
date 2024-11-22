@@ -6,62 +6,85 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // シーズンのアニメタイトルを初期化する
-// chrome.runtime.onMessage.addListener(async (message) => {
-//     if (message.action !== 'initAnimeData') return;
-function initAnimeData(seasonData) {
-    chrome.tabs.create({ url: seasonData.nicoDicUrl, active: false }).then(tab => {
+chrome.runtime.onMessage.addListener(async (message) => {
+    if (message.action !== 'initAnimeData') return;
+    initAnimeData(message);
+});
+
+/**
+ * ニコニコ辞書から指定したシーズンのアニメタイトルを取得して保存する
+ * @param {*} message 
+ * @param {*} message.seasonData 
+ * @param {*} message.season 
+ */
+async function initAnimeData(message) {
+    console.log('message: ');
+    console.log(message);
+    chrome.tabs.create({ url: message.seasonData.nicoDicUrl, active: false }).then(tab => {
         chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ['anime_title_scraper.js'] // TODO:anime_title_scraper.jsに変更
+            files: ['anime_title_scraper.js']
         }).then((result) => {
             chrome.tabs.remove(tab.id);
             console.log(result[0].result);
             const seasonAnimeData = result[0].result;
-            chrome.storage.local.set({ [seasonData.seasonName]: seasonAnimeData});
+            chrome.storage.local.set({ [message.seasonData.seasonName]: seasonAnimeData }, () => {
+                updateAnimeData({ action: 'updateAnimeData', season: message.season });
+            });
         });
     });
 };
 
 // 未取得のエピソードを取得する
-// chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-async function updateAnimeData(message) {
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    if (message.action === 'updateAnimeData') {
+        updateAnimeData(message);
+    }
+});
 
-    // TODO:変更したデータ形式に対応させる
+/**
+ * ニコニコ動画からまだ取得していない動画の情報を取得して保存します。
+ * @param {object} message オブジェクト
+ * @param {string} message.action 'updateAnimeData'
+ * @param {string} message.season 動画情報を取得するシーズンの名前 例:'2024年秋アニメ'
+ * @returns {bool} 
+ */
+async function updateAnimeData(message) {
     if (message.action === 'updateAnimeData') {
         console.log('updateAnimeData');
-        const seasonAnimeData = await chrome.storage.local.get('seasonData')[message.season];
-        const targetUrl = seasonAnimeData.nicoVidUrl
-        chrome.storage.local.get(season, (result) => {
 
-            const watchlist = result.watchlist;
-            console.log("updateAnimeData");
-            chrome.tabs.create({ url: 'https://www.nicovideo.jp/tag/2024%E7%A7%8B%E3%82%A2%E3%83%8B%E3%83%A1%E5%85%AC%E5%BC%8F?&sort=f&order=d&page=', active: false }).then(tab => {
+        console.log(message);
+        const seasonAnimeData = await getLocal('seasonData');
+        console.log(seasonAnimeData);
+        const targetUrl = seasonAnimeData[message.season].nicoVidUrl + '?&sort=f&order=d&page=';
+
+        chrome.storage.local.get(message.season, (result) => {
+            const animeData = result[message.season];
+            chrome.tabs.create({ url: targetUrl, active: false }).then(tab => {
                 chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     files: ['episode_scraper.js']
                 }).then((result) => {
                     chrome.tabs.remove(tab.id);
-                    console.log(result[0].result);
+
+                    // 動画がまだないときfalseが返ってくるので終了する
+                    if (!result[0].result) {
+                        return false;
+                    }
+
                     // 最終更新日を更新
-                    // chrome.storage.local.get("config", (result) => {
-                    //     let config = result.config;
-                    //     if (config === undefined || config.updateDate === undefined) {
-                    //         config = { updateDate: new Date().toLocaleString() };
-                    //         console.log(config.updateDate);
-                    //         chrome.storage.local.set({ "config": config });
-                    //     }
-                    //     else {
-                    //         config.updateDate = new Date().toLocaleString;
-                    //         chrome.storage.local.set({ config: config });
-                    //     }
-                    // });
-                    //const updatedPlayList = watchlist.filter(anime => anime.status === 'watching').map(anime => anime.episodes).flat();
-                    // 未取得のエピソードをプレイリストに追加
-                    // updatedPlayList.forEach(episode => {
-                    //     if (!playList.includes(episode)) {
-                    //         playList.unshift(episode);
-                    //     }
-                    // });
+                    chrome.storage.local.get("seasonData", (result) => {
+                        let seasonData = result.seasonData;
+                        let currentSeasonData = seasonData[message.season];
+                        if (currentSeasonData.lastUpdateDate === undefined || currentSeasonData.lastUpdateDate === undefined) {
+                            currentSeasonData.lastUpdateDate = new Date().toLocaleDateString();
+                            chrome.storage.local.set({ seasonData: seasonData });
+                        }
+                        else {
+                            currentSeasonData.lastUpdateDate = new Date().toLocaleString;
+                            chrome.storage.local.set({ seasonData: seasonData });
+                        }
+                    });
                 });
             });
         });
@@ -69,62 +92,129 @@ async function updateAnimeData(message) {
     return true;
 };
 
-// 視聴切りタイトルを更新
+// 未取得のエピソードを取得する
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'moveToDropped') {
-        const title = message.title;
-        chrome.storage.local.get({ watchlist: [], droppedList: [], playList: [] }, (result) => {
-            let watchlist = result.watchlist;
-            let droppedList = result.droppedList;
-            let playList = result.playList;
-            //console.log(`watchlist: ${watchlist}, droppedList: ${droppedList}`);
-            let anime = watchlist.find(a => a.title === title);
-            if (anime) {
-                watchlist = watchlist.filter(a => a.title !== title);
-                anime.status = "dropped";
-                droppedList.push(anime);
-                console.log(playList);
-                playList = playList.filter(episode => episode.animeTitle !== title);
-                // プレイリストをソート
-                playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
-                console.log(playList);
-
-                chrome.storage.local.set({ watchlist: watchlist, droppedList: droppedList, playList: playList });
-            }
+    if (message.action === 'updateSeason') {
+        updateSeason().then((result) => {
+            sendResponse(result);
+            console.log(result);
         });
+        
+        return true;
     }
-    return true;
 });
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+/**
+ * 現在時刻から現在のシーズンと次のシーズンを取得して保存する
+ * 
+ */
+async function updateSeason() {
+    // 現在の日時を取得
+    const currentDate = new Date();
+    let seasonYear = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;  // 1月が0のため+1
+
+    // 現在のシーズンを決定
+    let currentSeason;
+    if (month >= 3 && month <= 5) {
+        currentSeason = "春";
+    } else if (month >= 6 && month <= 8) {
+        currentSeason = "夏";
+    } else if (month >= 9 && month <= 11) {
+        currentSeason = "秋";
+    } else {
+        currentSeason = "冬";
+        // 1月や2月なら前年をシーズンの年度とする
+        if (month <= 2) {
+            seasonYear -= 1;
+        }
+    }
+
+    const currentAnimeSeason = `${seasonYear}年${currentSeason}アニメ`;
+    const currentVidEncodedString = encodeURIComponent(`${seasonYear}${currentSeason}アニメ公式`);
+    const currentDicEncodedString = encodeURIComponent(`${seasonYear}年${currentSeason}アニメ`);
+    const currentAnimeSeasonData = {
+        "seasonCode": String(seasonYear) + String(seasonCode[currentSeason]),
+        "seasonName": currentAnimeSeason,
+        "nicoVidUrl": nicoVidBaseURL + currentVidEncodedString,
+        "nicoDicUrl": nicoDicBaseURL + currentDicEncodedString,
+        "lastUpdateDate": new Date().toLocaleString()
+    }
+
+    // 次のシーズンを決定
+    let nextSeason;
+    let nextSeasonYear = seasonYear;
+    if (currentSeason === "春") {
+        nextSeason = "夏";
+    } else if (currentSeason === "夏") {
+        nextSeason = "秋";
+    } else if (currentSeason === "秋") {
+        nextSeason = "冬";
+    } else {
+        nextSeason = "春";
+        nextSeasonYear += 1;  // 冬の次は春なので、年度が変わる
+    }
+
+    const nextAnimeSeason = `${nextSeasonYear}年${nextSeason}アニメ`;
+    const nextVidEncodedString = encodeURIComponent(`${nextSeasonYear}${nextSeason}アニメ公式`);
+    const nextDicEncodedString = encodeURIComponent(`${nextSeasonYear}年${nextSeason}アニメ`);
+    const nextAnimeSeasonData = {
+        "seasonCode": String(nextSeasonYear) + String(seasonCode[nextSeason]),
+        "seasonName": nextAnimeSeason,
+        "nicoVidUrl": nicoVidBaseURL + nextVidEncodedString,
+        "nicoDicUrl": nicoDicBaseURL + nextDicEncodedString,
+        "lastUpdateDate": new Date().toLocaleString()
+    }
+    console.log(currentAnimeSeasonData);
+    console.log(nextAnimeSeasonData);
+
+    shouldShowPaidVideoValue = false;
+
+    // まだ登録されていないシーズンを保存
+    preSeasonData = await getLocal('seasonData');
+    console.log(preSeasonData);
+    if (!Object.keys(preSeasonData).includes(currentAnimeSeason)) {
+        preSeasonData[currentAnimeSeason] = currentAnimeSeasonData;
+        await chrome.storage.local.set({seasonData: preSeasonData});
+        console.log(currentAnimeSeasonData);
+        console.log(currentAnimeSeason);
+        await initAnimeData({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
+    } else if (!Object.keys(preSeasonData).includes(nextAnimeSeason)) {
+        preSeasonData = await getLocal('seasonData');
+        preSeasonData[nextAnimeSeason] = nextAnimeSeasonData;
+        await chrome.storage.local.set({seasonData: preSeasonData});
+        console.log(nextAnimeSeasonData);
+        console.log(nextAnimeSeason);
+        await initAnimeData({ seasonData: nextAnimeSeasonData, season: nextAnimeSeason });
+    }
+    return [[currentAnimeSeason, Object.keys(preSeasonData).includes(currentAnimeSeason)], [nextAnimeSeason, Object.keys(preSeasonData).includes(nextAnimeSeason)]]
+}
+// 視聴切りタイトルを更新
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    if (message.action === 'moveToDropped') {
+        const title = message.title;
+        const season = await getLocal('season');
+        const currentSeasonData = await getLocal(season);
+        const targetAnimeData = currentSeasonData[title];
+        targetAnimeData.status = "dropped";
+        chrome.storage.local.set({ [season]: currentSeasonData });
+    }
+});
+
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.action === 'moveToWatching') {
         const title = message.title;
-        chrome.storage.local.get({ watchlist: [], droppedList: [], playList: [] }, (result) => {
-            let watchlist = result.watchlist;
-            let droppedList = result.droppedList;
-            let playList = result.playList;
-
-            let anime = droppedList.find(a => a.title === title);
-            if (anime) {
-                droppedList = droppedList.filter(a => a.title !== title);
-                anime.status = "watching";
-                watchlist.push(anime);
-                console.log(playList);
-                playList = playList.concat(anime.episodes);
-                console.log(anime.episodes);
-                // プレイリストをソート
-                playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
-
-                chrome.storage.local.set({ watchlist: watchlist, droppedList: droppedList, playList: playList });
-            }
-        });
+        const season = await getLocal('season');
+        const currentSeasonData = await getLocal(season);
+        const targetAnimeData = currentSeasonData[title];
+        targetAnimeData.status = "watching";
+        chrome.storage.local.set({ [season]: currentSeasonData });
     }
-    return true;
 });
 
 //拡張機能がインストールされたときに実行される処理
-chrome.runtime.onInstalled.addListener((details) => {
-    // if (details.reason == 'install') {
+chrome.runtime.onInstalled.addListener(async (details) => {
+    if (details.reason == 'install') {
         // 現在の日時を取得
         const currentDate = new Date();
         let seasonYear = currentDate.getFullYear();
@@ -149,11 +239,12 @@ chrome.runtime.onInstalled.addListener((details) => {
         const currentAnimeSeason = `${seasonYear}年${currentSeason}アニメ`;
         const currentVidEncodedString = encodeURIComponent(`${seasonYear}${currentSeason}アニメ公式`);
         const currentDicEncodedString = encodeURIComponent(`${seasonYear}年${currentSeason}アニメ`);
-        const currentAnimeSeasonData = { 
-            "seasonCode": String(seasonYear) + String(seasonCode[currentSeason]), 
-            "seasonName": currentAnimeSeason, 
-            "nicoVidUrl": nicoVidBaseURL + currentVidEncodedString, 
-            "nicoDicUrl": nicoDicBaseURL + currentDicEncodedString 
+        const currentAnimeSeasonData = {
+            "seasonCode": String(seasonYear) + String(seasonCode[currentSeason]),
+            "seasonName": currentAnimeSeason,
+            "nicoVidUrl": nicoVidBaseURL + currentVidEncodedString,
+            "nicoDicUrl": nicoDicBaseURL + currentDicEncodedString,
+            "lastUpdateDate": new Date().toLocaleString()
         }
 
         // 次のシーズンを決定
@@ -173,27 +264,37 @@ chrome.runtime.onInstalled.addListener((details) => {
         const nextAnimeSeason = `${nextSeasonYear}年${nextSeason}アニメ`;
         const nextVidEncodedString = encodeURIComponent(`${nextSeasonYear}${nextSeason}アニメ公式`);
         const nextDicEncodedString = encodeURIComponent(`${nextSeasonYear}年${nextSeason}アニメ`);
-        const nextAnimeSeasonData = { 
-            "seasonCode": String(nextSeasonYear) + String(seasonCode[nextSeason]), 
-            "seasonName": nextAnimeSeason, 
-            "nicoVidUrl": nicoVidBaseURL + nextVidEncodedString, 
-            "nicoDicUrl": nicoDicBaseURL + nextDicEncodedString 
+        const nextAnimeSeasonData = {
+            "seasonCode": String(nextSeasonYear) + String(seasonCode[nextSeason]),
+            "seasonName": nextAnimeSeason,
+            "nicoVidUrl": nicoVidBaseURL + nextVidEncodedString,
+            "nicoDicUrl": nicoDicBaseURL + nextDicEncodedString,
+            "lastUpdateDate": new Date().toLocaleString()
         }
         console.log(currentAnimeSeasonData);
         console.log(nextAnimeSeasonData);
         const seasonData = {}
         seasonData[currentAnimeSeason] = currentAnimeSeasonData;
         seasonData[nextAnimeSeason] = nextAnimeSeasonData;
+
+        shouldShowPaidVideoValue = false;
         //シーズン情報をストレージに保存
-        chrome.storage.local.set({ season: currentAnimeSeason, currentAnimeSeason: currentAnimeSeason, seasonData: seasonData }, () => {
-            initAnimeData(currentAnimeSeasonData);
+        chrome.storage.local.set({
+            season: currentAnimeSeason,
+            currentAnimeSeason: currentAnimeSeason,
+            seasonData: seasonData,
+            shouldShowPaidVideoValue: shouldShowPaidVideoValue
+        }, () => {
+            // ニコニコ辞書から指定したシーズンのアニメタイトルを取得する
+            initAnimeData({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
         });
-    
-    // else if (details.reason == 'update') {
-    //     const season = chrome.storage.local.get('season')['season'];
-    //     updateAnimeData({ action: 'updateAnimeData' , season: season})
-    //     //chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season});
-    // }    
+    }
+    else if (details.reason == 'update') {
+        const result = await chrome.storage.local.get('season');
+        const season = result['season'];
+        //updateAnimeData({ action: 'updateAnimeData' , season: season});
+        //chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season});
+    }
 });
 
 const nicoVidBaseURL = "https://www.nicovideo.jp/tag/";
@@ -238,29 +339,57 @@ const seasonCode = {
 // xhr.send();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action != 'getAnimeThumData') return;
-    fetch(message.url)
-        .then(function (res) {
-            return res.text(); // フェッチしたデータを JSON 形式に変換
-        })
-        .then(async function (htmlString) {
-            // chのアニメのサムネ画像を抽出
-            const regex = /<div class="c-footerCp__container__overview__symbolImage">[\s\S]*?<img[^>]+src="([^"]+)"[^>]*>/;
-            const match = regex.exec(htmlString);
-            if (match) {
-                const src = match[1];
-                base64Image = await getImageBase64(src);
-               
-                sendResponse({imageSrc: src, imageBase64: base64Image});
-            } else {
-                console.log("指定の画像が見つかりませんでした");
-                sendResponse({imagesrc: null, imageBase64: null});
+    if (message.action !== 'getAnimeThumData') return;
+
+    (async () => {
+        try {
+            const response = await fetch(message.url);
+            const htmlString = await response.text();
+
+            // 正規表現の定義
+            const TITLE_REGEX = /<h1 class="channel_name"><a href="[^"]+">(.+?)<\/a><\/h1>/;
+            const THUM_REGEX = /<div class="c-footerCp__container__overview__symbolImage">[\s\S]*?<img[^>]+src="([^"]+)"[^>]*>/;
+
+            // タイトルの抽出
+            const titleMatch = TITLE_REGEX.exec(htmlString);
+            const animeTitle = titleMatch ? titleMatch[1] : null;
+
+            if (!animeTitle) {
+                console.log('アニメのタイトルが見つかりませんでした');
             }
-        })
-        .catch(function (err) {
-            console.error("エラー:", err);
-        });
-    return true;
+
+            // サムネイル画像の抽出
+            const thumMatch = THUM_REGEX.exec(htmlString);
+
+            if (thumMatch) {
+                const src = thumMatch[1];
+                const base64Image = await getImageBase64(src);
+
+                sendResponse({
+                    imageSrc: src,
+                    imageBase64: base64Image,
+                    animeTitle: animeTitle,
+                });
+            } else {
+                console.log('指定の画像が見つかりませんでした');
+                sendResponse({
+                    imageSrc: null,
+                    imageBase64: null,
+                    animeTitle: animeTitle,
+                });
+            }
+        } catch (error) {
+            console.error('エラー:', error);
+            sendResponse({
+                error: error.message,
+                imageSrc: null,
+                imageBase64: null,
+                animeTitle: null,
+            });
+        }
+    })();
+
+    return true; // 非同期応答を待つために必要
 });
 
 // 画像をBase64形式で取得する関数
@@ -289,4 +418,18 @@ async function getImageBase64(imageUrl) {
         console.error("Error in getImageBase64:", error);
         return null; // エラーが発生した場合
     }
+}
+
+async function getLocal(key) {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(key, (result) => {
+            if (chrome.runtime.lastError) {
+                // エラーが発生した場合は reject で処理
+                reject(chrome.runtime.lastError);
+            } else {
+                // 値を返す
+                resolve(result[key]);
+            }
+        });
+    });
 }

@@ -17,8 +17,8 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://www.nicovideo.jp/tag/2024%E7%A7%8B%E3%82%A2%E3%83%8B%E3%83%A1%E5%85%AC%E5%BC%8F?sort=f&order=d"], 
-      "js": ["content.js"]
+      "matches": ["https://www.nicovideo.jp/tag/*"], 
+      "js": ["episode_scraper.js"]
     },
     {
       "matches": ["https://www.nicovideo.jp/watch/*"], 

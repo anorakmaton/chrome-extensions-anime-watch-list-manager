@@ -32,9 +32,9 @@ async function getAnimeData(season) {
     const promises = []; // 非同期処理を管理する Promise のリスト
     animeContainerList.forEach((ul) => { 
         Array.from(ul.querySelectorAll('li')).forEach((li) => {
-            var animetitle = Array.from(li.childNodes).map(node => node.textContent).join('')
-            animetitle = animetitle.trim(); // 前後の空白と改行を削除
-            animetitle = animetitle.replace(/\[\d+\]/g, ""); // [1]などの脚注を削除
+            var animeTitle = Array.from(li.childNodes).map(node => node.textContent).join('')
+            animeTitle = animeTitle.trim(); // 前後の空白と改行を削除
+            animeTitle = animeTitle.replace(/\[\d+\]/g, ""); // [1]などの脚注を削除
             var channelUrl = '';
             var imageUrl = '';
             //console.log(mergedlist);
@@ -49,18 +49,24 @@ async function getAnimeData(season) {
                     const promise = sendMessageAsync({ action: "getAnimeThumData", url: channelUrl }).then((response) => {
                         imageUrl = response.imageSrc;
                         imageBase64 = response.imageBase64;
+                        animeTitle = response.animeTitle;
                         const animeData = { 
                             ...animeTemplate, 
-                            title: animetitle, 
+                            title: animeTitle, 
                             officialPageUrl: channelUrl, 
                             imageUrl: imageUrl,
-                            imageBase64: imageBase64
+                            imageBase64: imageBase64,
                         };
-                        animeList[animetitle] = animeData;
+                        animeList[animeTitle] = animeData;
                     });
                     
                     promises.push(promise); // Promise をリストに追加
                 } else { 
+                    const animeData = { 
+                        ...animeTemplate, 
+                        title: animeTitle, 
+                    };
+                    animeList[animeTitle] = animeData;
                     console.log('chLink要素が見つかりませんでした');
                 }
             }
@@ -82,7 +88,8 @@ async function initAnimeData(season) {
     const animeContainerList = [];
     h3list.forEach((h3) => { animeContainerList.push(h3.nextElementSibling)});
 
-    const animeList = [];
+    const animeList = {};
+    const promises = [];
     animeContainerList.forEach((ul) => { 
         Array.from(ul.querySelectorAll('li')).forEach((li) => {
             var animetitle = Array.from(li.childNodes).map(node => node.textContent).join('')
@@ -92,23 +99,30 @@ async function initAnimeData(season) {
             var imageUrl = '';
             //console.log(mergedlist);
             nicoChImg = li.querySelector('img');
-            if (nicoChImg) { 
+            if (nicoChImg) {  // ニコニコにチャンネルが存在する時
                 const chLinkArray = Array.from(li.querySelectorAll('a')).filter(link => 
                         link.hasAttribute('target') && link.hasAttribute('style')
                 );
                 if (chLinkArray.length > 0) { 
                     const chLink = chLinkArray[0]; // 最初の要素を取得 
                     channelUrl = chLink.getAttribute('href'); 
+                    // チャンネルページからアニメタイトルを取得する
+                    const promise = sendMessageAsync({ action: 'getAnimeTitle', url: channelUrl}).then((response) => {
+                        animeTitle = response.animeTitle;
+                        const animeData = { ...animeTemplate, title: animetitle, officialPageUrl: channelUrl, imageUrl: imageUrl };
+                        console.log(animeData);
+                        animeList[animetitle] = animeData;
+                    });
                     //console.log('href attribute:', hrefValue);
-                    const animeData = { ...animeTemplate, title: animetitle, officialPageUrl: channelUrl, imageUrl: imageUrl }
-                    console.log(animeData);
-                    animeList.push(animeData);
+                    promises.push(promise);
                 } else { 
                     console.log('chLink要素が見つかりませんでした');
                 }
             }
         })
     });
+    // すべての非同期処理が終わるのを待つ
+    await Promise.all(promises);
     return animeList;
 }
 

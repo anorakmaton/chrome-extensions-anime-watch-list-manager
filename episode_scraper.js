@@ -1,17 +1,19 @@
-async function episodeScraper(animeList, playList) {
+async function episodeScraper(season, animeList, playList) {
     // console.log(animeList);
     // console.log(playList);
     const parser = new DOMParser();
-    console.log('episodeScraper');
-                     https://www.nicovideo.jp/tag/2024%E5%B9%B4%E7%A7%8B%E3%82%A2%E3%83%8B%E3%83%A1
-    const baseUrl = '?&sort=f&order=d&page=';
+    const baseUrl = window.location.href;
+
     var pager = document.querySelector('.toolbar div.pager');
+    if (!pager) { // まだ動画がない時pagerがundefinedになるので終了する
+        return false;
+    }
     var currentPage = pager.querySelector('a.pagerBtn.switchingBtn.active');
     var nextPage = currentPage.nextElementSibling;
     //var notFoundAnimeList = animeList;
     // すべてのページからエピソードを取得
     let cnt = 0;
-    pageLoop: while (nextPage !== null || cnt < 500) {
+    pageLoop: while (nextPage !== null || cnt < 10) {
         const response = await fetch(baseUrl + currentPage.textContent); 
         const text = await response.text();
         const doc = parser.parseFromString(text, 'text/html');
@@ -31,7 +33,7 @@ async function episodeScraper(animeList, playList) {
             watched: false,
             status: ''
         }
-
+        //console.log("[MyScript] animeElements: ", animeElements);
         for (const animeElement of animeElements) {
             let episodeTitle = animeElement.querySelector('.itemContent .itemTitle a').title;
             const episodeUrl = animeElement.querySelector('.itemContent .itemTitle a').href;
@@ -42,10 +44,17 @@ async function episodeScraper(animeList, playList) {
             const paidIcon = animeElement.querySelector('.videoList01Wrap .iconPayment');
             const isPaid = paidIcon !== null;
             console.log(isPaid);
-            const anime = animeList.find(a => {
+            const anime = Object.values(animeList).find(a => {
                 const shortEpisodeTitle = episodeTitle.substring(0, a.title.length);
                 return isSimilar(a.title, shortEpisodeTitle);
             });
+            if (anime) {
+                //console.log("[MyScript] animeTitle: " + episodeTitle + "matchingKeys: " + matchingKeys);
+            }
+            else {
+                console.log("[MyScript] not found title: ",episodeTitle);
+            }
+            //console.log("[MyScript] matchingKeys: ", matchingKeys)
             // notFoundAnimeList = notFoundAnimeList.filter(a => {
             //     const shortEpisodeTitle = episodeTitle.substring(0, a.title.length);
             //     return !isSimilar(a.title, shortEpisodeTitle);
@@ -60,7 +69,7 @@ async function episodeScraper(animeList, playList) {
                     // 未視聴のエピソードをwatchlistとプレイリストに追加
                     anime.episodes.push(episode);
                     playList.unshift(episode);
-                    console.log(`Added episode: ${episodeTitle}`);
+                    //console.log("[MyScript]", `Added episode: ${episodeTitle}`);
                     // anime.episodesをリリース日でソート
                     anime.episodes.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
                 }
@@ -92,19 +101,19 @@ async function episodeScraper(animeList, playList) {
         cnt++;
     }
     // animeのプロパティを更新
-    for (const anime of animeList) {
+    for (const anime of Object.values(animeList)) {
         anime.currentEpisode = anime.episodes.length;
         anime.totalEpisodes = anime.episodes.length;
     }
    
     // playListを投稿日でソート
-    playList.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+    Array.from(playList).sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
     
-    await chrome.storage.local.set({ watchlist: animeList, playList: playList }).then(() => {
+    await chrome.storage.local.set({ [season]: animeList }).then(() => {
         //console.log(playList);
-        sendResponse('エピソードデータを更新しました');
+        //sendResponse('エピソードデータを更新しました');
     });
-    return true;
+    return animeList;
 }
 
 // レーベンシュタイン距離を計算する関数
@@ -142,44 +151,24 @@ function isSimilar(str1, str2, threshold = 0.8) {
     return rate >= threshold;
 }
 
-async function fetchAndStoreImage(imageUrl, storageKey) {
-    try {
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        
-        // 画像データをBase64形式に変換
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = function () {
-            const base64data = reader.result;
-            
-            
-            // chrome.storageに画像データを保存
-            chrome.storage.local.set({ [storageKey]: base64data }, () => {
-                console.log("Image saved to chrome.storage with key:", storageKey);
-            });
-        };
-    } catch (error) {
-        console.error("Failed to fetch and store image:", error);
-    }
-}
-
-
 async function returnAnimeList() {
     //chrome.storage.localからアニメのデータを取得
     let result = (await chrome.storage.local.get(['season', 'seasonData']));
     const season = result.season;
-    const seasonData = result.seasonData[season];
+    //const seasonData = result.seasonData[season];
 
-    let animeList = (await chrome.storage.local.get(season))[season];
-    let playList = (await chrome.storage.local.get('playList'))['playList'];
+    result = (await chrome.storage.local.get(season));
+    const animeList = result[season];
+    console.log(animeList);
+    let playList;
     if (!animeList) {
         console.error('アニメリストが取得できませんでした');
     }
     if (!playList) {
         playList = [];
     }
-    return await episodeScraper(animeList, playList);
+    
+    return await episodeScraper(season, animeList, playList);
 }
 
 returnAnimeList();

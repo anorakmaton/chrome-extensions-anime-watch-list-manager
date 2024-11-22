@@ -583,7 +583,7 @@ toggleButtons.forEach(button => {
     button.addEventListener('click', function () {
         // ボタンのvalue属性を取得
         const listId = button.name;
-        updateAll();
+        //updateAll();
         toggleList(listId);
     });
 });

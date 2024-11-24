@@ -4,7 +4,7 @@
 a.html
 .gitignore
 /thumbnail/
-.vscode
+.vscode/
 test.js
 watchlist.json
 memo.md

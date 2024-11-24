@@ -489,3 +489,7 @@ input:checked + .slider:before {
     margin-right: 10px;
 }
 
+/* ランキングのアニメカードのスタイル */
+#anime-ranking .anime-buttons {
+    display: none;
+}

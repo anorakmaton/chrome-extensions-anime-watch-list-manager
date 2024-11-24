@@ -8,7 +8,8 @@ animeTemplate = {
     imageUrl: '',
     status: 'watching',
     episodes: [],
-    imageBase64: null
+    imageBase64: null,
+    averageViewCount: 0,
 }
 function sendMessageAsync(message) {
     return new Promise((resolve, reject) => {
@@ -26,8 +27,27 @@ async function getAnimeData(season) {
     const h3list = document.querySelectorAll('h3')
 
     const animeContainerList = [];
-    h3list.forEach((h3) => { animeContainerList.push(h3.nextElementSibling)});
-
+    // 指定するh2のテキスト内容
+    const targetH2Text = "作品一覧";
+    // 対象のh2タグを探す
+    const h2Elements = Array.from(document.querySelectorAll('h2'));
+    const targetH2 = h2Elements.find(h2 => h2.textContent.trim() === targetH2Text);
+    if (targetH2) {
+        // 次の要素を取得
+        let nextElement = targetH2.nextElementSibling;
+        // 次のh2が見つかるまでループ
+        while (nextElement && nextElement.tagName !== 'H2') {
+            if (nextElement.tagName === 'UL') {
+                animeContainerList.push(nextElement); // ulタグを収集
+            }
+            nextElement = nextElement.nextElementSibling; // 次の要素へ
+        }
+        // 結果を表示
+        console.log(animeContainerList);
+    } else {
+        console.log("指定したh2タグが見つかりません");
+    }
+    
     const animeList = {};
     const promises = []; // 非同期処理を管理する Promise のリスト
     animeContainerList.forEach((ul) => { 

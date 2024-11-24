@@ -7,8 +7,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // シーズンのアニメタイトルを初期化する
 chrome.runtime.onMessage.addListener(async (message) => {
-    if (message.action !== 'initAnimeData') return;
-    initAnimeData(message);
+    if (message.action !== 'initAnimeTitle') return;
+    initAnimeTitle(message);
 });
 
 /**
@@ -17,22 +17,64 @@ chrome.runtime.onMessage.addListener(async (message) => {
  * @param {*} message.seasonData 
  * @param {*} message.season 
  */
-async function initAnimeData(message) {
-    console.log('message: ');
-    console.log(message);
+async function initAnimeTitle(message) {
     chrome.tabs.create({ url: message.seasonData.nicoDicUrl, active: false }).then(tab => {
         chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['anime_title_scraper.js']
         }).then((result) => {
             chrome.tabs.remove(tab.id);
-            console.log(result[0].result);
             const seasonAnimeData = result[0].result;
             chrome.storage.local.set({ [message.seasonData.seasonName]: seasonAnimeData }, () => {
                 updateAnimeData({ action: 'updateAnimeData', season: message.season });
             });
         });
     });
+};
+
+// シーズンのアニメタイトルを更新する
+chrome.runtime.onMessage.addListener(async (message) => {
+    if (message.action === 'updateAnimeTitle') {
+        updateAnimeTitle(message);
+    }
+});
+
+/**
+ * ニコニコ辞書から指定したシーズンのアニメタイトルを取得して新しいアニメがあれば保存する
+ * @param {*} message
+ * @param {*} message.seasonData
+ * @param {*} message.season
+ * @returns {bool}
+*/
+async function updateAnimeTitle(message) {
+    let seasonData = await getLocal('seasonData');
+    seasonData = seasonData[message.season];
+    chrome.tabs.create({ url: seasonData.nicoDicUrl, active: false }).then(tab => {
+        chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['anime_title_scraper.js']
+        }).then(async (result) => {
+            chrome.tabs.remove(tab.id);
+            const newSeasonAnimeData = result[0].result;
+            const currentSeasonData = await getLocal(message.season);
+            const currentAnimeTitles = Object.keys(currentSeasonData);
+            const newAnimeTitles = Object.keys(newSeasonAnimeData);
+            const newAnimeData = {};
+            newAnimeTitles.forEach((title) => {
+                if (!currentAnimeTitles.includes(title)) {
+                    newAnimeData[title] = newSeasonAnimeData[title];
+                }
+            });
+            if (Object.keys(newAnimeData).length > 0) {
+                console.log('新しいアニメが見つかりました');
+                console.log(newAnimeData);
+                chrome.storage.local.set({ [message.season]: { ...currentSeasonData, ...newAnimeData } }, () => {
+                    updateAnimeData({ action: 'updateAnimeData', season: message.season });
+                });
+            }
+        });
+    });
+    return true;
 };
 
 // 未取得のエピソードを取得する
@@ -53,9 +95,7 @@ async function updateAnimeData(message) {
     if (message.action === 'updateAnimeData') {
         console.log('updateAnimeData');
 
-        console.log(message);
         const seasonAnimeData = await getLocal('seasonData');
-        console.log(seasonAnimeData);
         const targetUrl = seasonAnimeData[message.season].nicoVidUrl + '?&sort=f&order=d&page=';
 
         chrome.storage.local.get(message.season, (result) => {
@@ -97,7 +137,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'updateSeason') {
         updateSeason().then((result) => {
             sendResponse(result);
-            console.log(result);
         });
         
         return true;
@@ -165,27 +204,20 @@ async function updateSeason() {
         "nicoDicUrl": nicoDicBaseURL + nextDicEncodedString,
         "lastUpdateDate": new Date().toLocaleString()
     }
-    console.log(currentAnimeSeasonData);
-    console.log(nextAnimeSeasonData);
 
     shouldShowPaidVideoValue = false;
 
     // まだ登録されていないシーズンを保存
     preSeasonData = await getLocal('seasonData');
-    console.log(preSeasonData);
     if (!Object.keys(preSeasonData).includes(currentAnimeSeason)) {
         preSeasonData[currentAnimeSeason] = currentAnimeSeasonData;
         await chrome.storage.local.set({seasonData: preSeasonData});
-        console.log(currentAnimeSeasonData);
-        console.log(currentAnimeSeason);
-        await initAnimeData({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
+        await initAnimeTitle({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
     } else if (!Object.keys(preSeasonData).includes(nextAnimeSeason)) {
         preSeasonData = await getLocal('seasonData');
         preSeasonData[nextAnimeSeason] = nextAnimeSeasonData;
         await chrome.storage.local.set({seasonData: preSeasonData});
-        console.log(nextAnimeSeasonData);
-        console.log(nextAnimeSeason);
-        await initAnimeData({ seasonData: nextAnimeSeasonData, season: nextAnimeSeason });
+        await initAnimeTitle({ seasonData: nextAnimeSeasonData, season: nextAnimeSeason });
     }
     return [[currentAnimeSeason, Object.keys(preSeasonData).includes(currentAnimeSeason)], [nextAnimeSeason, Object.keys(preSeasonData).includes(nextAnimeSeason)]]
 }
@@ -271,8 +303,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
             "nicoDicUrl": nicoDicBaseURL + nextDicEncodedString,
             "lastUpdateDate": new Date().toLocaleString()
         }
-        console.log(currentAnimeSeasonData);
-        console.log(nextAnimeSeasonData);
         const seasonData = {}
         seasonData[currentAnimeSeason] = currentAnimeSeasonData;
         seasonData[nextAnimeSeason] = nextAnimeSeasonData;
@@ -286,7 +316,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
             shouldShowPaidVideoValue: shouldShowPaidVideoValue
         }, () => {
             // ニコニコ辞書から指定したシーズンのアニメタイトルを取得する
-            initAnimeData({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
+            initAnimeTitle({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
         });
     }
     else if (details.reason == 'update') {

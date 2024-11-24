@@ -1,6 +1,25 @@
-async function episodeScraper(season, animeList, playList) {
+async function episodeScraper(season, animeList) {
     // console.log(animeList);
-    // console.log(playList);
+    const episodeTemplate = {
+        animeTitle: '', 
+        title: '',
+        shortTitle: '', // アニメタイトルを除いたエピソードタイトル
+        episodeNumber: 0,
+        isPaid: false,
+        url: '',
+        duration: 0,
+        lastTime: 0,
+        imageUrl: '',
+        releaseDate: '',
+        freeUntil: '',
+        watched: false,
+        status: '',
+        viewCount: 0,
+        likeCount: 0,
+        commentCount: 0,
+        mylistCount: 0,
+        updateCount: 0,
+    };
     const parser = new DOMParser();
     const baseUrl = window.location.href;
 
@@ -18,21 +37,7 @@ async function episodeScraper(season, animeList, playList) {
         const text = await response.text();
         const doc = parser.parseFromString(text, 'text/html');
         const animeElements = doc.querySelectorAll('.contentBody.video.uad.videoList.videoList01 .videoListInner:not(.videoListSkeleton) li.item')
-        const episodeTemplate = {
-            animeTitle: '', 
-            title: '',
-            shortTitle: '', // アニメタイトルを除いたエピソードタイトル
-            episodeNumber: 0,
-            isPaid: false,
-            url: '',
-            duration: 0,
-            lastTime: 0,
-            imageUrl: '',
-            releaseDate: '',
-            freeUntil: '',
-            watched: false,
-            status: ''
-        }
+        
         //console.log("[MyScript] animeElements: ", animeElements);
         for (const animeElement of animeElements) {
             let episodeTitle = animeElement.querySelector('.itemContent .itemTitle a').title;
@@ -43,17 +48,20 @@ async function episodeScraper(season, animeList, playList) {
             const freeUntilString = freeUntil.toISOString();
             const paidIcon = animeElement.querySelector('.videoList01Wrap .iconPayment');
             const isPaid = paidIcon !== null;
-            console.log(isPaid);
+            const viewCountElement = animeElement.querySelector('.itemContent .itemData  li.count.view > span');
+            const commentCountElement = animeElement.querySelector('.itemContent .itemData  li.count.comment > span');
+            const likeCountElement = animeElement.querySelector('.itemContent .itemData  li.count.like > span');
+            const mylistCountElement = animeElement.querySelector('.itemContent .itemData  li.count.mylist > span');
+            const viewCount = parseInt(viewCountElement.textContent.replace(/,/g, ''));
+            const commentCount = parseInt(commentCountElement.textContent.replace(/,/g, ''));
+            const likeCount = parseInt(likeCountElement.textContent.replace(/,/g, ''));
+            const mylistCount = parseInt(mylistCountElement.textContent.replace(/,/g, ''));
+             
             const anime = Object.values(animeList).find(a => {
                 const shortEpisodeTitle = episodeTitle.substring(0, a.title.length);
                 return isSimilar(a.title, shortEpisodeTitle);
             });
-            if (anime) {
-                //console.log("[MyScript] animeTitle: " + episodeTitle + "matchingKeys: " + matchingKeys);
-            }
-            else {
-                console.log("[MyScript] not found title: ",episodeTitle);
-            }
+
             //console.log("[MyScript] matchingKeys: ", matchingKeys)
             // notFoundAnimeList = notFoundAnimeList.filter(a => {
             //     const shortEpisodeTitle = episodeTitle.substring(0, a.title.length);
@@ -65,20 +73,27 @@ async function episodeScraper(season, animeList, playList) {
                 if (episodeIndex === -1) {
                     // エピソードが登録されていない場合
                     const shortTitle = episodeTitle.substring(anime.title.length).trim();
-                    const episode = { ...episodeTemplate, animeTitle:anime.title, title: episodeTitle, shortTitle: shortTitle, isPaid: isPaid, url: episodeUrl, releaseDate: releaseDate, freeUntil: freeUntilString, imageUrl: imageUrl };
+                    const episode = { ...episodeTemplate, animeTitle:anime.title, title: episodeTitle, shortTitle: shortTitle, isPaid: isPaid, url: episodeUrl, releaseDate: releaseDate, freeUntil: freeUntilString, imageUrl: imageUrl, viewCount: viewCount, likeCount: likeCount, commentCount: commentCount, mylistCount: mylistCount };
                     // 未視聴のエピソードをwatchlistとプレイリストに追加
                     anime.episodes.push(episode);
-                    playList.unshift(episode);
                     //console.log("[MyScript]", `Added episode: ${episodeTitle}`);
                     // anime.episodesをリリース日でソート
                     anime.episodes.sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
                 }
-                else {
-                    // すでに登録されているエピソードを更新
+                else {             
+                    // すでに登録されているのエピソードの更新回数が2回以上かつ投稿日が2週間以上前の場合は終了する
                     const episode = anime.episodes[episodeIndex];
-                    const paidIcon = animeElement.querySelector('.videoList01Wrap .iconPayment');
-                    const isPaid = paidIcon !== null;
+                    if (episode.updateCount >= 2 && new Date(episode.releaseDate) < new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000)) {
+                        break pageLoop;
+                    }
+
+                    // すでに登録されているエピソードを更新
                     episode.isPaid = isPaid;
+                    episode.viewCount = viewCount;
+                    episode.likeCount = likeCount;
+                    episode.commentCount = commentCount;
+                    episode.mylistCount = mylistCount;
+                    episode.updateCount++;
                 }
                 // サムネイルをダウンロードする
                 
@@ -105,12 +120,8 @@ async function episodeScraper(season, animeList, playList) {
         anime.currentEpisode = anime.episodes.length;
         anime.totalEpisodes = anime.episodes.length;
     }
-   
-    // playListを投稿日でソート
-    Array.from(playList).sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
     
     await chrome.storage.local.set({ [season]: animeList }).then(() => {
-        //console.log(playList);
         //sendResponse('エピソードデータを更新しました');
     });
     return animeList;
@@ -160,15 +171,10 @@ async function returnAnimeList() {
     result = (await chrome.storage.local.get(season));
     const animeList = result[season];
     console.log(animeList);
-    let playList;
-    if (!animeList) {
-        console.error('アニメリストが取得できませんでした');
-    }
-    if (!playList) {
-        playList = [];
-    }
-    
-    return await episodeScraper(season, animeList, playList);
+
+    return await episodeScraper(season, animeList);
 }
+
+
 
 returnAnimeList();

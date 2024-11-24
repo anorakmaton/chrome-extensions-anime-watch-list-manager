@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const seasonData = await getLocal('seasonData');
       const selectedSeasonData = seasonData[season];
       chrome.runtime.sendMessage({ 
-        action: 'initAnimeData', 
+        action: 'initAnimeTitle', 
         seasonData: selectedSeasonData,
         season: season
       });

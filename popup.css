@@ -493,3 +493,10 @@ input:checked + .slider:before {
 #anime-ranking .anime-buttons {
     display: none;
 }
+
+/* 拡張機能の説明のスタイル */
+.description {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #bbb;
+}

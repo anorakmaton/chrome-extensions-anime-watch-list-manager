@@ -35,20 +35,26 @@
 </head>
 <body>
   <h1>拡張機能の設定</h1>
-  
   <!-- 表示するシーズンを選択 -->
-  <label for="seriesUrl">表示するアニメ期を選択</label>
+  <label for="season-select">表示するアニメ期を選択</label>
+  <!-- <span>表示したいシーズンがなければ下の最新のシーズンを取得ボタンを押してシーズンを更新してください。</span> -->
   <select name="seasons" id="season-select">
   </select>
-
-  <!-- シーズンを更新するボタン -->
-  <label for="seasonSyncButton">最新のシーズンを取得</label>
-  <button id="seasonSyncBtn">取得</button>
   
   <!-- 有料動画を表示するかどうかを切り替えるボタン -->
   <label for="shouldShowPaidVideo">有料動画を表示する:</label>
   <input type="checkbox" id="shouldShowPaidVideo" checked="true" />
   <button id="saveBtn">保存</button>
+
+  <!-- <span>現在のシーズンと次のシーズンを取得します。</span> -->
+  <!-- シーズンを更新するボタン -->
+  <label for="seasonSyncBtn">最新のシーズンを取得</label>
+  <button id="seasonSyncBtn">取得</button>
   <script src="options.js"></script>
+
+  <h1>説明</h1>
+  <p>表示するアニメ期の選択、有料動画を表示するチェックボックスを変更したあと保存ボタンを押すことで変更が反映されます。</p>
+  <p>最新のシーズンを取得ボタンを押すと、現在放送中のシーズンと次のシーズンを取得して表示するアニメ期の選択のリストに追加します。</p>
+
 </body>
 </html>

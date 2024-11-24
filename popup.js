@@ -638,9 +638,18 @@ toggleButtons.forEach(button => {
 });
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // 拡張機能の最新バージョンを確認
+    checkForUpdates();
+    
     // 表示するシーズンを取得する
     result = await chrome.storage.local.get('season');
     const season = result['season'];
+
+    // 拡張機能の設定画面を開く
+    const settingButton = document.getElementById('setting-button');
+    settingButton.addEventListener('click', function () {
+        chrome.runtime.openOptionsPage();
+    });
 
     // 手動更新ボタン
     const syncButton = document.getElementById('sync-button');
@@ -778,10 +787,50 @@ function loadImageFromStorage(season, key, imgElementId) {
     });
 }
 
-// DOMContentLoaded イベントで画像をロード
-// document.addEventListener("DOMContentLoaded", () => {
-//     loadImageFromStorage("2024年秋アニメ", "Re:ゼロから始める異世界生活 3rd season 襲撃編", "savedImageDisplay");
-// });
+async function checkForUpdates() {
+    try {
+        const response = await fetch(GITHUB_API_URL);
+        if (!response.ok) {
+            console.error("Failed to fetch release information");
+            return;
+        }
+
+        const releaseData = await response.json();
+        const latestVersion = releaseData.tag_name.replace(/^v/, ""); // "v1.0.0" → "1.0.0"
+        console.log(`Current Version: ${CURRENT_VERSION}`);
+        console.log(`Latest Version: ${latestVersion}`);
+
+        if (isNewerVersion(latestVersion, CURRENT_VERSION)) {
+            console.log("New version available");
+            if (confirm("新しいバージョンが公開されています。ダウンロードページを開きますか？")) {
+                window.open(RELEASE_PAGE_URL, "_blank");
+            }
+        } else {
+            console.log("You are using the latest version");
+        }
+    } catch (error) {
+        console.error("Error checking for updates:", error);
+    }
+}
+
+function isNewerVersion(latest, current) {
+    const latestParts = latest.split(".").map(Number);
+    const currentParts = current.split(".").map(Number);
+
+    for (let i = 0; i < latestParts.length; i++) {
+        if (latestParts[i] > (currentParts[i] || 0)) {
+            return true;
+        } else if (latestParts[i] < (currentParts[i] || 0)) {
+            return false;
+        }
+    }
+    return false;
+}
+
+const GITHUB_API_URL = "https://api.github.com/repos/anorakmaton/chrome-extensions-anime-watch-list-manager/releases/latest";
+const CURRENT_VERSION = chrome.runtime.getManifest().version; // 現在のバージョン
+const RELEASE_PAGE_URL = "https://github.com/anorakmaton/chrome-extensions-anime-watch-list-manager/releases/latest";
+
 
 async function getLocal(key) {
     return new Promise((resolve, reject) => {

@@ -556,7 +556,7 @@ function createEpisodeCard(episode, idx) {
                     {
                         const moveToDroppedIcon = document.createElement('img');
                         moveToDroppedIcon.className = 'episode-button moveToDroppedIcon';
-                        moveToDroppedIcon.src = 'images/download-icon.png';
+                        moveToDroppedIcon.src = '../images/download-icon.png';
 
                         moveToDroppedButton.appendChild(moveToDroppedIcon);
                     }

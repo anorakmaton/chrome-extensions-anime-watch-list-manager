@@ -7,99 +7,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // シーズンのアニメタイトルを初期化する
 chrome.runtime.onMessage.addListener(async (message) => {
-    if (message.action !== 'initAnimeData') return;
-    initAnimeData(message);
+    if (message.action !== 'initAnimeTitle') return;
+    getAnimeTitleFromOffscreen(message);
 });
 
-/**
- * ニコニコ辞書から指定したシーズンのアニメタイトルを取得して保存する
- * @param {*} message 
- * @param {*} message.seasonData 
- * @param {*} message.season 
- */
-async function initAnimeData(message) {
-    console.log('message: ');
-    console.log(message);
-    chrome.tabs.create({ url: message.seasonData.nicoDicUrl, active: false }).then(tab => {
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['anime_title_scraper.js']
-        }).then((result) => {
-            chrome.tabs.remove(tab.id);
-            console.log(result[0].result);
-            const seasonAnimeData = result[0].result;
-            chrome.storage.local.set({ [message.seasonData.seasonName]: seasonAnimeData }, () => {
-                updateAnimeData({ action: 'updateAnimeData', season: message.season });
-            });
-        });
-    });
-};
+// シーズンのアニメタイトルを更新する
+chrome.runtime.onMessage.addListener(async (message) => {
+    if (message.action === 'updateAnimeTitle') {
+        getAnimeTitleFromOffscreen(message);
+    }
+});
 
 // 未取得のエピソードを取得する
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.action === 'updateAnimeData') {
-        updateAnimeData(message);
+        getAnimeDataFromOffscreen(message);
     }
 });
-
-/**
- * ニコニコ動画からまだ取得していない動画の情報を取得して保存します。
- * @param {object} message オブジェクト
- * @param {string} message.action 'updateAnimeData'
- * @param {string} message.season 動画情報を取得するシーズンの名前 例:'2024年秋アニメ'
- * @returns {bool} 
- */
-async function updateAnimeData(message) {
-    if (message.action === 'updateAnimeData') {
-        console.log('updateAnimeData');
-
-        console.log(message);
-        const seasonAnimeData = await getLocal('seasonData');
-        console.log(seasonAnimeData);
-        const targetUrl = seasonAnimeData[message.season].nicoVidUrl + '?&sort=f&order=d&page=';
-
-        chrome.storage.local.get(message.season, (result) => {
-            const animeData = result[message.season];
-            chrome.tabs.create({ url: targetUrl, active: false }).then(tab => {
-                chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: ['episode_scraper.js']
-                }).then((result) => {
-                    chrome.tabs.remove(tab.id);
-
-                    // 動画がまだないときfalseが返ってくるので終了する
-                    if (!result[0].result) {
-                        return false;
-                    }
-
-                    // 最終更新日を更新
-                    chrome.storage.local.get("seasonData", (result) => {
-                        let seasonData = result.seasonData;
-                        let currentSeasonData = seasonData[message.season];
-                        if (currentSeasonData.lastUpdateDate === undefined || currentSeasonData.lastUpdateDate === undefined) {
-                            currentSeasonData.lastUpdateDate = new Date().toLocaleDateString();
-                            chrome.storage.local.set({ seasonData: seasonData });
-                        }
-                        else {
-                            currentSeasonData.lastUpdateDate = new Date().toLocaleString;
-                            chrome.storage.local.set({ seasonData: seasonData });
-                        }
-                    });
-                });
-            });
-        });
-    }
-    return true;
-};
 
 // 未取得のエピソードを取得する
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'updateSeason') {
         updateSeason().then((result) => {
             sendResponse(result);
-            console.log(result);
         });
-        
+
         return true;
     }
 });
@@ -165,27 +97,20 @@ async function updateSeason() {
         "nicoDicUrl": nicoDicBaseURL + nextDicEncodedString,
         "lastUpdateDate": new Date().toLocaleString()
     }
-    console.log(currentAnimeSeasonData);
-    console.log(nextAnimeSeasonData);
 
     shouldShowPaidVideoValue = false;
 
     // まだ登録されていないシーズンを保存
     preSeasonData = await getLocal('seasonData');
-    console.log(preSeasonData);
     if (!Object.keys(preSeasonData).includes(currentAnimeSeason)) {
         preSeasonData[currentAnimeSeason] = currentAnimeSeasonData;
-        await chrome.storage.local.set({seasonData: preSeasonData});
-        console.log(currentAnimeSeasonData);
-        console.log(currentAnimeSeason);
-        await initAnimeData({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
+        await chrome.storage.local.set({ seasonData: preSeasonData });
+        await getAnimeDataFromOffscreen({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
     } else if (!Object.keys(preSeasonData).includes(nextAnimeSeason)) {
         preSeasonData = await getLocal('seasonData');
         preSeasonData[nextAnimeSeason] = nextAnimeSeasonData;
-        await chrome.storage.local.set({seasonData: preSeasonData});
-        console.log(nextAnimeSeasonData);
-        console.log(nextAnimeSeason);
-        await initAnimeData({ seasonData: nextAnimeSeasonData, season: nextAnimeSeason });
+        await chrome.storage.local.set({ seasonData: preSeasonData });
+        await getAnimeDataFromOffscreen({ seasonData: nextAnimeSeasonData, season: nextAnimeSeason });
     }
     return [[currentAnimeSeason, Object.keys(preSeasonData).includes(currentAnimeSeason)], [nextAnimeSeason, Object.keys(preSeasonData).includes(nextAnimeSeason)]]
 }
@@ -271,8 +196,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
             "nicoDicUrl": nicoDicBaseURL + nextDicEncodedString,
             "lastUpdateDate": new Date().toLocaleString()
         }
-        console.log(currentAnimeSeasonData);
-        console.log(nextAnimeSeasonData);
         const seasonData = {}
         seasonData[currentAnimeSeason] = currentAnimeSeasonData;
         seasonData[nextAnimeSeason] = nextAnimeSeasonData;
@@ -286,7 +209,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
             shouldShowPaidVideoValue: shouldShowPaidVideoValue
         }, () => {
             // ニコニコ辞書から指定したシーズンのアニメタイトルを取得する
-            initAnimeData({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
+            getAnimeTitleFromOffscreen({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
         });
     }
     else if (details.reason == 'update') {
@@ -305,38 +228,6 @@ const seasonCode = {
     "秋": 3,
     "冬": 4
 };
-
-//TODO: 以前のデータを更新する
-// mergedlist.forEach((anime) => {
-//     if (isSimilar(anime.title, animetitle)) {
-//         console.log(animetitle);
-//     }
-// });
-// const watchlist = result.watchlist;
-//         const droppedlist = result.droppedList;
-//         const mergedlist = watchlist.concat(droppedlist);
-
-//         mergedlist.sort((a, b) => {
-//             if (a.title < b.title) return -1;
-//             if (a.title > b.title) return 1;
-//             return 0;
-//         });
-//         mergedlist.forEach((anime) => {
-//             console.log(anime.title);
-//         });
-// importScripts('jquery-3.7.1.min.js');
-// var xhr = new XMLHttpRequest();
-// xhr.responseType  = "document";
-
-// xhr.onload = function(e){
-//     var dom = e.target.responseXML;
-//     var blogs = dom.querySelectorAll('c-footerCp__container__overview__symbolImage');
-//     console.log(blogs);
-
-// };
-
-// xhr.open("get", "https://ch.nicovideo.jp/spice-and-wolf");
-// xhr.send();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action !== 'getAnimeThumData') return;
@@ -432,4 +323,137 @@ async function getLocal(key) {
             }
         });
     });
+}
+
+async function getAnimeDataFromOffscreen(message) {
+    const seasonAnimeData = await getLocal(message.season);
+    const seasonData = await getLocal('seasonData');
+    const currentSeasonData = seasonData[message.season];
+    const baseUrl = currentSeasonData.nicoVidUrl;
+    const response = await fetch(baseUrl);
+    const htmlString = await response.text();
+    const season = message.season;
+
+    sendMessageToOffscreenDocument('getAnimeData', { baseUrl, season, seasonAnimeData, htmlString });
+}
+
+async function getAnimeTitleFromOffscreen(message) {
+    const seasonData = await getLocal('seasonData');
+    const currentSeasonData = seasonData[message.season];
+    const baseUrl = currentSeasonData.nicoDicUrl;
+    const response = await fetch(baseUrl);
+    const htmlString = await response.text();
+    sendMessageToOffscreenDocument('getAnimeTitle', { htmlString, season: message.season });
+}
+const OFFSCREEN_DOCUMENT_PATH = 'html/offscreen.html';
+
+async function sendMessageToOffscreenDocument(type, data) {
+    // Create an offscreen document if one doesn't exist yet
+    if (!(await hasDocument())) {
+        await chrome.offscreen.createDocument({
+            url: OFFSCREEN_DOCUMENT_PATH,
+            reasons: [chrome.offscreen.Reason.DOM_PARSER],
+            justification: 'Parse DOM'
+        });
+    }
+    // Now that we have an offscreen document, we can dispatch the
+    // message.
+    chrome.runtime.sendMessage({
+        type,
+        target: 'offscreen',
+        data
+    });
+}
+
+chrome.runtime.onMessage.addListener(handleMessages);
+
+// This function performs basic filtering and error checking on messages before
+// dispatching the message to a more specific message handler.
+async function handleMessages(message) {
+    // Return early if this message isn't meant for the background script
+    if (message.target !== 'background') {
+        return;
+    }
+
+    // Dispatch the message to an appropriate handler.
+    switch (message.type) {
+        case 'add-exclamationmarks-result':
+            handleAddExclamationMarkResult(message.data);
+            closeOffscreenDocument();
+            break;
+        case 'getAnimeDataResult':
+            console.log('getAnimeDataResult');
+            handleGetAnimeDataResult(message.data);
+            break;
+        case 'getAnimeTitleResult':
+            console.log('getAnimeTitleResult');
+            handleGetAnimeTitleResult(message.data);
+            break;
+        default:
+            console.warn(`Unexpected message type received: '${message.type}'.`);
+    }
+}
+
+async function handleAddExclamationMarkResult(dom) {
+    console.log('Received dom', dom);
+}
+
+async function handleGetAnimeDataResult(data) {
+    // 動画がまだないときfalseが返ってくるので終了する
+    if (data.animeList === false) {
+        return false;
+    }
+
+    // アニメデータを更新
+    chrome.storage.local.set({ [data.season]: data.animeList });
+    // 最終更新日を更新
+    const seasonData = await getLocal('seasonData');
+    const currentSeasonData = seasonData[data.season];
+    currentSeasonData.lastUpdateDate = new Date().toLocaleString;
+    chrome.storage.local.set({ seasonData: seasonData });
+}   
+
+async function handleGetAnimeTitleResult(data) {
+    const seasonAnimeData = await getLocal(data.season);
+
+    // アニメデータがまだなければ初期化
+    if (seasonAnimeData === undefined) {
+        await chrome.storage.local.set({ [data.season]: data.titleList });
+    }
+    else {
+        // アニメデータを更新
+        const currentSeasonData = await getLocal(data.season);
+        const currentAnimeTitles = Object.keys(currentSeasonData);
+        const newAnimeTitles = Object.keys(data.titleList);
+        const newAnimeData = {};
+        newAnimeTitles.forEach((title) => {
+            if (!currentAnimeTitles.includes(title)) {
+                newAnimeData[title] = data.titleList[title];
+            }
+        });
+        if (Object.keys(newAnimeData).length > 0) {
+            console.log('新しいアニメが見つかりました');
+            console.log(newAnimeData);
+            await chrome.storage.local.set({ [data.season]: { ...currentSeasonData, ...newAnimeData } });
+        }
+    }
+    getAnimeDataFromOffscreen({ season: data.season });
+}
+
+async function closeOffscreenDocument() {
+    if (!(await hasDocument())) {
+        return;
+    }
+    await chrome.offscreen.closeDocument();
+}
+
+async function hasDocument() {
+    // Check all windows controlled by the service worker if one of them is the offscreen document
+    const matchedClients = await clients.matchAll();
+    for (const client of matchedClients) {
+        if (client.url.endsWith(OFFSCREEN_DOCUMENT_PATH)) {
+            return true;
+        }
+    }
+    return false;
 }

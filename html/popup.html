@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Anime Watchlist</title>
-  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="../css/popup.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 
@@ -46,12 +46,27 @@
         <!-- 視聴切りアニメがここに追加される -->
       </div>
     </div>
+
+    <!-- アニメのランキングを表示する -->
+    <div class="anime-list">
+      <button class="toggle-btn" name="anime-ranking">アニメランキング</button>
+      <div id="anime-ranking" class="list-content">
+        <!-- アニメランキングがここに追加される -->
+         
+      </div>
+    </div>
   </div>
-  <script src="Sortable.min.js"></script>
-  <script src="popup.js"></script>
+  <script src="../src/Sortable.min.js"></script>
+  <script src="../src/popup.js"></script>
 
   <!-- 下部のボタンコンテナー -->
   <div class="header-container">
+    <!-- 設定ページ -->
+    <span>設定</span>
+    <button id="setting-button">
+      <i class="fas fa-cog"></i>
+    </button>
+
     <!-- 更新ボタン -->
     <div class="sync-button-container">
       <span>更新</span>
@@ -65,12 +80,21 @@
     </div>
     <!-- 連続再生を切り替えるボタン -->
     <div class="switch-container">
-      <span>次の動画を自動再生</span>
+      <span>自動再生</span>
       <label class="switch">
         <input type="checkbox" id="autoPlaySwitch">
         <span class="slider"></span>
       </label>
     </div>
+  </div>
+
+  <!-- 拡張機能の説明 -->
+  <div class="description">
+    <h2>拡張機能の説明</h2>
+    <p>プレイリストには視聴中アニメリストに入っているアニメの新着動画が表示されます。</p>
+    <p>拡張機能を開いた際に前回の更新から24時間経過していれば動画の更新が行われます。</p>
+    <p>更新ボタンを押すことで手動で更新することができます。</p>
+    <p>アニメリストに特定のアニメが存在しないときは更新ボタンを押すことで表示されるようになるかも</p>
   </div>
 </body>
 

@@ -1,10 +1,11 @@
 var season = '';
 var currentSeasonData;
 
-function updateAll() {
+async function updateAll() {
     showPlayList();
     populateAnimeLists();
-    //showPlayList();
+    await updateRanking();
+    showRanking();
 }
 
 async function showPlayList() {
@@ -14,7 +15,6 @@ async function showPlayList() {
         const currentAnimeSeasonData = result[season];
         const currentAnimeSeasonArray = Object.values(currentAnimeSeasonData);
         const shouldShowPaidVideoValue = result.shouldShowPaidVideoValue;
-        console.log(shouldShowPaidVideoValue);
         const unwatchedList = document.getElementById('unwatched-episode');
         const watchedList = document.getElementById('watched-episode');
         var playList = [];
@@ -157,6 +157,55 @@ async function populateAnimeLists() {
 
     });
 }
+
+// アニメのランキングを表示する関数
+async function showRanking() {
+    const season = await getLocal('season');
+    chrome.storage.local.get(season, (result) => {
+        const currentAnimeSeasonData = result[season];
+        const currentAnimeSeasonArray = Object.values(currentAnimeSeasonData);
+        // 平均視聴回数でソート
+        currentAnimeSeasonArray.sort((a, b) => b.averageViewCount - a.averageViewCount);
+        const rankingAnimeListContainer = document.getElementById('anime-ranking');
+        rankingAnimeListContainer.innerHTML = ''; // 以前の内容をクリア
+        let idx = 0;
+        currentAnimeSeasonArray.forEach(anime => {
+            const animeCard = createAnimeCard(anime);
+            rankingAnimeListContainer.appendChild(animeCard);
+            idx++;
+        });
+    });
+}
+
+// アニメのランキングを更新する関数
+async function updateRanking() {
+    const season = await getLocal('season');
+    await chrome.storage.local.get(season, async (result) => {
+        const currentAnimeSeasonData = result[season];
+        const currentAnimeSeasonArray = Object.values(currentAnimeSeasonData);
+        let idx = 0;
+        currentAnimeSeasonArray.forEach(anime => {
+            let viewCountSum = 0;
+            let episodeCount = 0;
+            let viewCountAverage = 0;
+            anime.episodes.forEach(episode => {
+                // エピソードが公開されてから1週間以上かつ再生回数が1以上のエピソードの再生回数を合計
+                if (new Date(episode.releaseDate) < new Date() - 7 * 24 * 60 * 60 * 1000 && episode.viewCount > 0) {
+                    viewCountSum += episode.viewCount;
+                    episodeCount++;
+                }
+            });
+            if (episodeCount > 0) {
+                viewCountAverage = viewCountSum / episodeCount;
+                anime.averageViewCount = viewCountAverage;
+            }
+        });
+        await chrome.storage.local.set({ [season]: currentAnimeSeasonData });
+    });
+}
+
+
+
 
 // アニメカードを作成する関数
 function createAnimeCard(anime) {
@@ -481,7 +530,7 @@ function createEpisodeCard(episode, idx) {
                     {
                         const primeVideoIcon = document.createElement('img');
                         primeVideoIcon.className = 'primeVideoIcon';
-                        primeVideoIcon.src = 'images/prime-icon-custom.png';
+                        primeVideoIcon.src = '../images/prime-icon-custom.png';
 
                         primeVideoButton.appendChild(primeVideoIcon);
                     }
@@ -589,15 +638,24 @@ toggleButtons.forEach(button => {
 });
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // 拡張機能の最新バージョンを確認
+    checkForUpdates();
+    
     // 表示するシーズンを取得する
     result = await chrome.storage.local.get('season');
     const season = result['season'];
+
+    // 拡張機能の設定画面を開く
+    const settingButton = document.getElementById('setting-button');
+    settingButton.addEventListener('click', function () {
+        chrome.runtime.openOptionsPage();
+    });
 
     // 手動更新ボタン
     const syncButton = document.getElementById('sync-button');
     syncButton.addEventListener('click', function () {
         console.log('sync button')
-        chrome.runtime.sendMessage({ action: 'updateAnimeData', season: season });
+        chrome.runtime.sendMessage({ action: 'updateAnimeTitle', season: season });
     })
     const autoPlaySwitch = document.getElementById("autoPlaySwitch");
 
@@ -628,7 +686,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         let currentSeasonData = seasonData[season];
 
         if (currentSeasonData.lastUpdateDate === undefined || currentSeasonData.lastUpdateDate === undefined) {
-            currentSeasonData.lastUpdateDate = new Date().toLocaleDateString();
+            currentSeasonData.lastUpdateDate = new Date().toLocaleString();
             chrome.storage.local.set({ seasonData: seasonData });
         }
         else {
@@ -636,12 +694,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             const updateDate = new Date(currentSeasonData.lastUpdateDate);
             const diff = currentDate - updateDate;
             console.log(`diff: ${diff}`);
-            if (diff < 1000 * 60 * 60 * 24) {
+            if (diff < 1000 * 60 * 60 * 24) { // 1日以上経過していない場合は更新しない
             //if (diff < 1000) {
                 needsUpdate = false;
             } else {
                 needsUpdate = true;
-                currentSeasonData.lastUpdateDate = new Date().toLocaleDateString();
+                currentSeasonData.lastUpdateDate = new Date().toLocaleString();
                 chrome.storage.local.set({ seasonData: seasonData });
             }
         }
@@ -669,7 +727,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         //ローカルストレージにデータがない時はアニメリストを初期化
         if (currentSeasonArray.length === 0 && currentSeasonArray.length === 0) {
             console.log("No data in local storage");
-            chrome.runtime.sendMessage({ action: 'initAnimeData', season: season});
+            chrome.runtime.sendMessage({ action: 'initAnimeTitle', season: season});
         }
         else {
             console.log(`needsUpdate: ${needsUpdate}`);
@@ -680,7 +738,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
         }
     });
-    showPlayList(season);
+    //showPlayList(season);
+    updateAll();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -728,10 +787,50 @@ function loadImageFromStorage(season, key, imgElementId) {
     });
 }
 
-// DOMContentLoaded イベントで画像をロード
-// document.addEventListener("DOMContentLoaded", () => {
-//     loadImageFromStorage("2024年秋アニメ", "Re:ゼロから始める異世界生活 3rd season 襲撃編", "savedImageDisplay");
-// });
+async function checkForUpdates() {
+    try {
+        const response = await fetch(GITHUB_API_URL);
+        if (!response.ok) {
+            console.error("Failed to fetch release information");
+            return;
+        }
+
+        const releaseData = await response.json();
+        const latestVersion = releaseData.tag_name.replace(/^v/, ""); // "v1.0.0" → "1.0.0"
+        console.log(`Current Version: ${CURRENT_VERSION}`);
+        console.log(`Latest Version: ${latestVersion}`);
+
+        if (isNewerVersion(latestVersion, CURRENT_VERSION)) {
+            console.log("New version available");
+            if (confirm("新しいバージョンが公開されています。ダウンロードページを開きますか？")) {
+                window.open(RELEASE_PAGE_URL, "_blank");
+            }
+        } else {
+            console.log("You are using the latest version");
+        }
+    } catch (error) {
+        console.error("Error checking for updates:", error);
+    }
+}
+
+function isNewerVersion(latest, current) {
+    const latestParts = latest.split(".").map(Number);
+    const currentParts = current.split(".").map(Number);
+
+    for (let i = 0; i < latestParts.length; i++) {
+        if (latestParts[i] > (currentParts[i] || 0)) {
+            return true;
+        } else if (latestParts[i] < (currentParts[i] || 0)) {
+            return false;
+        }
+    }
+    return false;
+}
+
+const GITHUB_API_URL = "https://api.github.com/repos/anorakmaton/chrome-extensions-anime-watch-list-manager/releases/latest";
+const CURRENT_VERSION = chrome.runtime.getManifest().version; // 現在のバージョン
+const RELEASE_PAGE_URL = "https://github.com/anorakmaton/chrome-extensions-anime-watch-list-manager/releases/latest";
+
 
 async function getLocal(key) {
     return new Promise((resolve, reject) => {

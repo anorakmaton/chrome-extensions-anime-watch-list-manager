@@ -530,7 +530,7 @@ function createEpisodeCard(episode, idx) {
                     {
                         const primeVideoIcon = document.createElement('img');
                         primeVideoIcon.className = 'primeVideoIcon';
-                        primeVideoIcon.src = 'images/prime-icon-custom.png';
+                        primeVideoIcon.src = '../images/prime-icon-custom.png';
 
                         primeVideoButton.appendChild(primeVideoIcon);
                     }

@@ -94,7 +94,7 @@ body {
     right: 6px;
     width: 28px;
     height: 28px;
-    background-image: url('images/new-icon-2-blue.png');
+    background-image: url('../images/new-icon-2-blue.png');
     background-size: cover;
     background-repeat: no-repeat;
 }

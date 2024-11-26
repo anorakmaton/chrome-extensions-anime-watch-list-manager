@@ -686,7 +686,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         let currentSeasonData = seasonData[season];
 
         if (currentSeasonData.lastUpdateDate === undefined || currentSeasonData.lastUpdateDate === undefined) {
-            currentSeasonData.lastUpdateDate = new Date().toLocaleDateString();
+            currentSeasonData.lastUpdateDate = new Date().toLocaleString();
             chrome.storage.local.set({ seasonData: seasonData });
         }
         else {
@@ -699,7 +699,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 needsUpdate = false;
             } else {
                 needsUpdate = true;
-                currentSeasonData.lastUpdateDate = new Date().toLocaleDateString();
+                currentSeasonData.lastUpdateDate = new Date().toLocaleString();
                 chrome.storage.local.set({ seasonData: seasonData });
             }
         }

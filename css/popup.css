@@ -241,9 +241,12 @@ body {
 }
 
 /* 視聴切りに移動ボタンの個別スタイル */
-/* .moveToDroppedButton {
-  
-} */
+.episode-button.moveToDroppedIcon {
+    position: relative;
+    top: 2px;
+    width: 20px;
+    height: 20px;
+} 
 /* #unwatched-episodeの中のキャンセルボタンを非表示 */
 .episode-card:not(.watched) .unwatchedButton {
     display: none;

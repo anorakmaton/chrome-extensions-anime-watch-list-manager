@@ -8,6 +8,11 @@ async function updateAll() {
     showRanking();
 }
 
+function updateShow() {
+    showPlayList();
+    populateAnimeLists();
+}
+
 async function showPlayList() {
     const season = await getLocal('season');
     // TODO:変更したデータ形式に対応させる
@@ -25,9 +30,14 @@ async function showPlayList() {
         if (currentAnimeSeasonArray.length > 0) {
             // アニメタイトルの配列からすべてのエピソードをプレイリストに追加
             currentAnimeSeasonArray.forEach((anime) => {
-                anime.episodes.forEach((episode) => {
-                    playList.push(episode);
-                });
+                if (anime.status === 'dropped') {
+                    return;
+                }
+                else {
+                    anime.episodes.forEach((episode) => {
+                        playList.push(episode);
+                    });
+                }
             });
 
             // 投稿日が古い順に並び替え
@@ -40,13 +50,13 @@ async function showPlayList() {
                 }
                 // 未視聴のエピソード
                 if (!episode.watched) {
-                    const animeCard = createEpisodeCard(episode, data_episode_idx);
+                    const animeCard = createEpisodeCard(episode, data_episode_idx, season, true);
                     unwatchedList.appendChild(animeCard);
                     data_episode_idx++;
                 }
                 // 視聴済みかつ無料公開中のエピソード
                 else if (episode.watched && new Date(episode.freeUntil) >= currentDate) {
-                    const animeCard = createEpisodeCard(episode, data_episode_idx);
+                    const animeCard = createEpisodeCard(episode, data_episode_idx, season, true);
                     watchedList.appendChild(animeCard);
                     data_episode_idx++;
                 }
@@ -104,14 +114,14 @@ async function populateAnimeLists() {
         // 視聴中アニメリスト
         let idx = 0;
         watchlist.forEach(anime => {
-            const animeCard = createAnimeCard(anime);
+            const animeCard = createAnimeCard(anime, season);
             watchingAnimeListContainer.appendChild(animeCard);
             idx++;
         });
 
         // 視聴切りアニメリスト
         droppedList.forEach(anime => {
-            const animeCard = createAnimeCard(anime);
+            const animeCard = createAnimeCard(anime, season);
             droppedAnimeListContainer.appendChild(animeCard);
             idx++;
         });
@@ -170,7 +180,7 @@ async function showRanking() {
         rankingAnimeListContainer.innerHTML = ''; // 以前の内容をクリア
         let idx = 0;
         currentAnimeSeasonArray.forEach(anime => {
-            const animeCard = createAnimeCard(anime);
+            const animeCard = createAnimeCard(anime, season);
             rankingAnimeListContainer.appendChild(animeCard);
             idx++;
         });
@@ -208,7 +218,7 @@ async function updateRanking() {
 
 
 // アニメカードを作成する関数
-function createAnimeCard(anime) {
+function createAnimeCard(anime, season) {
     const div = document.createElement('div');
     const url = anime.officialPageUrl;
     div.setAttribute('data-anime-index', url);
@@ -227,7 +237,7 @@ function createAnimeCard(anime) {
                 return getNumber(a.url) - getNumber(b.url); // 数字で比較
             });
             anime.episodes.forEach((episode) => {
-                const episodeCard = createEpisodeCard(episode, episode_idx);
+                const episodeCard = createEpisodeCard(episode, episode_idx, season, false);
                 episodeList.appendChild(episodeCard);
                 episode_idx++;
             });
@@ -359,7 +369,7 @@ function createAnimeCard(anime) {
 }
 
 // エピソードカードを作成する関数
-function createEpisodeCard(episode, idx) {
+function createEpisodeCard(episode, idx, season, isPlayList) {
     const div = document.createElement('div');
     div.setAttribute('data-episode-index', idx);
     {
@@ -540,18 +550,11 @@ function createEpisodeCard(episode, idx) {
                     moveToDroppedButton.className = 'episode-button moveToDroppedButton';
                     moveToDroppedButton.value = episode.animeTitle;
                     moveToDroppedButton.title = '視聴切りにする';
-                    moveToDroppedButton.addEventListener('click', function () {
-                        chrome.storage.local.get({ watchlist: [], droppedList: [] }, (result) => {
-                            let watchlist = result.watchlist;
-                            let droppedList = result.droppedList;
-                            let _anime = watchlist.find(a => a.title === episode.animeTitle);
-                            if (_anime) {
-                                watchlist = watchlist.filter(a => a.title !== episode.animeTitle);
-                                _anime.status = "dropped";
-                                droppedList.push(_anime);
-                                chrome.storage.local.set({ watchlist: watchlist, droppedList: droppedList }, showPlayList);
-                            }
-                        });
+                    moveToDroppedButton.addEventListener('click', async function () {
+                        const seasonData = await getLocal(season);
+                        seasonData[episode.animeTitle].status = 'dropped';
+                        console.log(`seasonData[episode.animeTitle].status: ${seasonData[episode.animeTitle].status}`);
+                        chrome.storage.local.set({ [season]: seasonData }, updateShow());
                     });
                     {
                         const moveToDroppedIcon = document.createElement('img');
@@ -565,7 +568,9 @@ function createEpisodeCard(episode, idx) {
                     buttonsDiv.appendChild(watchedButton);
                     buttonsDiv.appendChild(unwatchedButton);
                     buttonsDiv.appendChild(primeVideoButton);
-                    //buttonsDiv.appendChild(moveToDroppedButton);
+                    if (isPlayList) { // プレイリストの場合のみ視聴切りボタンを表示
+                        buttonsDiv.appendChild(moveToDroppedButton);
+                    }
                 }
 
                 mainDiv.appendChild(title);

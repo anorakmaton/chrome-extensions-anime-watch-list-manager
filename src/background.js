@@ -339,11 +339,13 @@ async function getAnimeDataFromOffscreen(message) {
 
 async function getAnimeTitleFromOffscreen(message) {
     const seasonData = await getLocal('seasonData');
+    let oldAnimeTitles = await getLocal(message.season);
+    oldAnimeTitles = Object.keys(oldAnimeTitles);
     const currentSeasonData = seasonData[message.season];
     const baseUrl = currentSeasonData.nicoDicUrl;
     const response = await fetch(baseUrl);
     const htmlString = await response.text();
-    sendMessageToOffscreenDocument('getAnimeTitle', { htmlString, season: message.season });
+    sendMessageToOffscreenDocument('getAnimeTitle', { htmlString, season: message.season, oldAnimeTitles });
 }
 const OFFSCREEN_DOCUMENT_PATH = 'html/offscreen.html';
 
@@ -377,25 +379,24 @@ async function handleMessages(message) {
 
     // Dispatch the message to an appropriate handler.
     switch (message.type) {
-        case 'add-exclamationmarks-result':
-            handleAddExclamationMarkResult(message.data);
-            closeOffscreenDocument();
-            break;
         case 'getAnimeDataResult':
             console.log('getAnimeDataResult');
+            // 最終更新日を更新
+            const seasonData = await getLocal('seasonData');
+            const currentSeasonData = seasonData[message.data.season];
+            currentSeasonData.lastUpdateDate = new Date().toLocaleString();
+            await chrome.storage.local.set({ seasonData: seasonData });
+            chrome.runtime.sendMessage({ action: 'syncComplete-Episode', newEpisodeCount: message.data.newEpisodeCount });
             handleGetAnimeDataResult(message.data);
             break;
         case 'getAnimeTitleResult':
             console.log('getAnimeTitleResult');
+            chrome.runtime.sendMessage({ action: 'syncComplete-Title', newAnimeTitles: message.data.newAnimeTitles });
             handleGetAnimeTitleResult(message.data);
             break;
         default:
             console.warn(`Unexpected message type received: '${message.type}'.`);
     }
-}
-
-async function handleAddExclamationMarkResult(dom) {
-    console.log('Received dom', dom);
 }
 
 async function handleGetAnimeDataResult(data) {
@@ -406,11 +407,8 @@ async function handleGetAnimeDataResult(data) {
 
     // アニメデータを更新
     chrome.storage.local.set({ [data.season]: data.animeList });
-    // 最終更新日を更新
-    const seasonData = await getLocal('seasonData');
-    const currentSeasonData = seasonData[data.season];
-    currentSeasonData.lastUpdateDate = new Date().toLocaleString;
-    chrome.storage.local.set({ seasonData: seasonData });
+    // オフスクリーンを閉じる
+    closeOffscreenDocument();
 }   
 
 async function handleGetAnimeTitleResult(data) {

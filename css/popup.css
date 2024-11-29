@@ -492,6 +492,31 @@ input:checked + .slider:before {
     margin-right: 10px;
 }
 
+.sync-button-container button i {
+    animation: none;
+}
+
+@keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+}
+
+/* 更新中の状態を示すアニメーション */
+.sync-button-container button.syncing i {
+    animation: spin 1s linear infinite;
+}
+
+/* 更新中の状態 */
+#sync-button.syncing {
+    cursor: not-allowed;
+    opacity: 0.6; /* 視覚的に無効化を示すため */
+    pointer-events: none; /* クリックを無効化 */
+}
+
 /* ランキングのアニメカードのスタイル */
 #anime-ranking .anime-buttons {
     display: none;
@@ -503,3 +528,19 @@ input:checked + .slider:before {
     font-size: 12px;
     color: #bbb;
 }
+
+/* 結果メッセージのスタイル */
+.result-message {
+    margin-top: 10px;
+    font-size: 14px;
+    display: none; /* 初期状態は非表示 */
+  }
+  
+  .result-message.success {
+    color: green;
+  }
+  
+  .result-message.error {
+    color: red;
+  }
+  

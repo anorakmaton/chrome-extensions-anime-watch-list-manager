@@ -667,6 +667,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     result = await chrome.storage.local.get('season');
     const season = result['season'];
 
+    // シーズンを表示
+    const seasonLabel = document.getElementById('season-label');
+    seasonLabel.textContent = season;
+    
     // 拡張機能の設定画面を開く
     const settingButton = document.getElementById('setting-button');
     settingButton.addEventListener('click', function () {

@@ -544,3 +544,15 @@ input:checked + .slider:before {
     color: red;
   }
   
+/* 現在のシーズン表示のスタイル */
+.current-season-name {
+    font-size: 20px;
+    margin-bottom: 0px;
+    margin-top: 5px;
+    /*　透明度を変更 */
+    opacity: 0.8;
+}
+
+body {
+    padding-top: 0px;
+}

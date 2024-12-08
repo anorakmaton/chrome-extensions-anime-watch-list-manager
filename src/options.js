@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
       seasonDataArray = Object.values(result.seasonData);
       seasonDataArray.sort((a, b) => parseInt(a.seasonCode) - parseInt(b.seasonCode));
       seasonDataArray.forEach((season) => {
-        console.log(season); // TODO: debug
         const newOption = document.createElement('option');
         newOption.value = season.seasonName;
         newOption.text = season.seasonName;

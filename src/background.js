@@ -98,18 +98,53 @@ async function updateSeason() {
         "lastUpdateDate": new Date().toLocaleString()
     }
 
-    shouldShowPaidVideoValue = false;
+    const tmpSeasonData = {}
+    tmpSeasonData[currentAnimeSeason] = currentAnimeSeasonData;
+    tmpSeasonData[nextAnimeSeason] = nextAnimeSeasonData;
 
+    // 1年前までのシーズンを追加
+    for (let i = 0; i < 3; i++) {
+        let preSeason;
+        let preSeasonYear = seasonYear;
+        if (currentSeason === "春") {
+            preSeason = "冬";
+            preSeasonYear -= 1;
+        } else if (currentSeason === "夏") {
+            preSeason = "春";
+        } else if (currentSeason === "秋") {
+            preSeason = "夏";
+        } else {
+            preSeason = "秋";
+        }
+        const preAnimeSeason = `${preSeasonYear}年${preSeason}アニメ`;
+        const preVidEncodedString = encodeURIComponent(`${preSeasonYear}${preSeason}アニメ公式`);
+        const preDicEncodedString = encodeURIComponent(`${preSeasonYear}年${preSeason}アニメ`);
+        const preAnimeSeasonData = {
+            "seasonCode": String(preSeasonYear) + String(seasonCode[preSeason]),
+            "seasonName": preAnimeSeason,
+            "nicoVidUrl": nicoVidBaseURL + preVidEncodedString,
+            "nicoDicUrl": nicoDicBaseURL + preDicEncodedString,
+            "lastUpdateDate": new Date().toLocaleString()
+        }
+        tmpSeasonData[preAnimeSeason] = preAnimeSeasonData;
+        currentSeason = preSeason;
+        seasonYear = preSeasonYear;
+    }
+    
+    shouldShowPaidVideoValue = false;
     // まだ登録されていないシーズンを保存
     preSeasonData = await getLocal('seasonData');
+    Object.keys(tmpSeasonData).forEach(async (season) => {
+        if (!Object.keys(preSeasonData).includes(season)) {
+            preSeasonData[season] = tmpSeasonData[season];
+            // await getAnimeDataFromOffscreen({ seasonData: tmpSeasonData[season], season: season });
+        }
+    });
+    await chrome.storage.local.set({ seasonData: preSeasonData });
+    //  現在のシーズンと次のシーズンが登録されていなければデータを取得する
     if (!Object.keys(preSeasonData).includes(currentAnimeSeason)) {
-        preSeasonData[currentAnimeSeason] = currentAnimeSeasonData;
-        await chrome.storage.local.set({ seasonData: preSeasonData });
         await getAnimeDataFromOffscreen({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
     } else if (!Object.keys(preSeasonData).includes(nextAnimeSeason)) {
-        preSeasonData = await getLocal('seasonData');
-        preSeasonData[nextAnimeSeason] = nextAnimeSeasonData;
-        await chrome.storage.local.set({ seasonData: preSeasonData });
         await getAnimeDataFromOffscreen({ seasonData: nextAnimeSeasonData, season: nextAnimeSeason });
     }
     return [[currentAnimeSeason, Object.keys(preSeasonData).includes(currentAnimeSeason)], [nextAnimeSeason, Object.keys(preSeasonData).includes(nextAnimeSeason)]]
@@ -139,7 +174,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
 //拡張機能がインストールされたときに実行される処理
 chrome.runtime.onInstalled.addListener(async (details) => {
-    if (details.reason == 'update') {
+    if (details.reason == 'install') {
         // 現在の日時を取得
         const currentDate = new Date();
         let seasonYear = currentDate.getFullYear();
@@ -241,12 +276,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
             getAnimeTitleFromOffscreen({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
         });
     }
-    // else if (details.reason == 'update') {
-    //     const result = await chrome.storage.local.get('season');
-    //     const season = result['season'];
-    //     //updateAnimeData({ action: 'updateAnimeData' , season: season});
-    //     //chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season});
-    // } //TODO: debug
+    else if (details.reason == 'update') {
+        const result = await chrome.storage.local.get('season');
+        const season = result['season'];
+        //updateAnimeData({ action: 'updateAnimeData' , season: season});
+        //chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season});
+    }
 });
 
 const nicoVidBaseURL = "https://www.nicovideo.jp/tag/";

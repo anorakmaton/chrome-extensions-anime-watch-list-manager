@@ -8,9 +8,6 @@ async function handleMessages(message) {
     console.log(message);
     // Dispatch the message to an appropriate handler.
     switch (message.type) {
-        case 'add-exclamationmarks-to-headings':
-            addExclamationMarksToHeadings(message.data);
-            break;
         case 'getAnimeData':
             getAnimeData(message.data);
             break;
@@ -23,20 +20,6 @@ async function handleMessages(message) {
     }
 }
 
-async function addExclamationMarksToHeadings(htmlString) {
-    const parser = new DOMParser();
-    const document = parser.parseFromString(htmlString, 'text/html');
-    document
-        .querySelectorAll('h1')
-        .forEach((heading) => (heading.textContent = heading.textContent + '!!!'));
-    const season = await getLocal('season');
-    sendToBackground(
-        'add-exclamationmarks-result',
-        //document.documentElement.outerHTML
-        season
-    );
-}
-
 function sendToBackground(type, data) {
     chrome.runtime.sendMessage({
         type,
@@ -46,6 +29,9 @@ function sendToBackground(type, data) {
 }
 
 async function episodeScraper(baseUrl, htmlString, season, animeList) {
+    console.log(animeList);
+    const preEpisodeCount = Object.values(animeList).reduce((acc, anime) => acc + anime.episodes.length, 0);
+    console.log(preEpisodeCount);
     // console.log(animeList);
     const episodeTemplate = {
         animeTitle: '', 
@@ -168,10 +154,11 @@ async function episodeScraper(baseUrl, htmlString, season, animeList) {
         anime.totalEpisodes = anime.episodes.length;
     }
     
-    return animeList;
+    const newAnimeCount = Object.values(animeList).reduce((acc, anime) => acc + anime.episodes.length, 0) - preEpisodeCount;
+    return [animeList, newAnimeCount];
 }
 
-async function animeTitleScraper(htmlString) {
+async function animeTitleScraper(htmlString, oldAnimeTitles) {
     animeTemplate = {
         title: '',
         officialPageUrl: '',
@@ -254,7 +241,9 @@ async function animeTitleScraper(htmlString) {
     });
     // すべての非同期処理が終わるのを待つ
     await Promise.all(promises);
-    return animeList;
+
+    const newAnimeTitles = Object.keys(animeList).filter(title => !oldAnimeTitles.includes(title));
+    return [animeList, newAnimeTitles];
 }
 
 // レーベンシュタイン距離を計算する関数
@@ -293,15 +282,15 @@ function isSimilar(str1, str2, threshold = 0.8) {
 }
 
 async function getAnimeData(data) {
-    const animeList = await episodeScraper(data.baseUrl, data.htmlString, data.season, data.seasonAnimeData);
-    sendToBackground('getAnimeDataResult', { season: data.season, animeList });
+    const [animeList, newEpisodeCount] = await episodeScraper(data.baseUrl, data.htmlString, data.season, data.seasonAnimeData);
+    sendToBackground('getAnimeDataResult', { season: data.season, animeList, newEpisodeCount });
 }
 
 async function getAnimeTitle(data) {
     const parser = new DOMParser();
     const document = parser.parseFromString(data.htmlString, 'text/html');
-    const title = await animeTitleScraper(data.htmlString);
-    sendToBackground('getAnimeTitleResult', { titleList: title, season: data.season });
+    const [title, newAnimeTitles] = await animeTitleScraper(data.htmlString, data.oldAnimeTitles);
+    sendToBackground('getAnimeTitleResult', { titleList: title, season: data.season, newAnimeTitles });
 }
 
 async function sendMessageAsync(message) {

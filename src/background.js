@@ -139,7 +139,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
 //拡張機能がインストールされたときに実行される処理
 chrome.runtime.onInstalled.addListener(async (details) => {
-    if (details.reason == 'install') {
+    if (details.reason == 'update') {
         // 現在の日時を取得
         const currentDate = new Date();
         let seasonYear = currentDate.getFullYear();
@@ -200,6 +200,35 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         seasonData[currentAnimeSeason] = currentAnimeSeasonData;
         seasonData[nextAnimeSeason] = nextAnimeSeasonData;
 
+        // 1年前までのシーズンを追加
+        for (let i = 0; i < 3; i++) {
+            let preSeason;
+            let preSeasonYear = seasonYear;
+            if (currentSeason === "春") {
+                preSeason = "冬";
+                preSeasonYear -= 1;
+            } else if (currentSeason === "夏") {
+                preSeason = "春";
+            } else if (currentSeason === "秋") {
+                preSeason = "夏";
+            } else {
+                preSeason = "秋";
+            }
+            const preAnimeSeason = `${preSeasonYear}年${preSeason}アニメ`;
+            const preVidEncodedString = encodeURIComponent(`${preSeasonYear}${preSeason}アニメ公式`);
+            const preDicEncodedString = encodeURIComponent(`${preSeasonYear}年${preSeason}アニメ`);
+            const preAnimeSeasonData = {
+                "seasonCode": String(preSeasonYear) + String(seasonCode[preSeason]),
+                "seasonName": preAnimeSeason,
+                "nicoVidUrl": nicoVidBaseURL + preVidEncodedString,
+                "nicoDicUrl": nicoDicBaseURL + preDicEncodedString,
+                "lastUpdateDate": new Date().toLocaleString()
+            }
+            seasonData[preAnimeSeason] = preAnimeSeasonData;
+            currentSeason = preSeason;
+            seasonYear = preSeasonYear;
+        }
+        
         shouldShowPaidVideoValue = false;
         //シーズン情報をストレージに保存
         chrome.storage.local.set({
@@ -212,12 +241,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
             getAnimeTitleFromOffscreen({ seasonData: currentAnimeSeasonData, season: currentAnimeSeason });
         });
     }
-    else if (details.reason == 'update') {
-        const result = await chrome.storage.local.get('season');
-        const season = result['season'];
-        //updateAnimeData({ action: 'updateAnimeData' , season: season});
-        //chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season});
-    }
+    // else if (details.reason == 'update') {
+    //     const result = await chrome.storage.local.get('season');
+    //     const season = result['season'];
+    //     //updateAnimeData({ action: 'updateAnimeData' , season: season});
+    //     //chrome.runtime.sendMessage({ action: 'updateAnimeData' , season: season});
+    // } //TODO: debug
 });
 
 const nicoVidBaseURL = "https://www.nicovideo.jp/tag/";
@@ -340,7 +369,12 @@ async function getAnimeDataFromOffscreen(message) {
 async function getAnimeTitleFromOffscreen(message) {
     const seasonData = await getLocal('seasonData');
     let oldAnimeTitles = await getLocal(message.season);
-    oldAnimeTitles = Object.keys(oldAnimeTitles);
+    
+    if (oldAnimeTitles === undefined) {
+        oldAnimeTitles = [];
+    } else {
+        oldAnimeTitles = Object.keys(oldAnimeTitles);
+    }
     const currentSeasonData = seasonData[message.season];
     const baseUrl = currentSeasonData.nicoDicUrl;
     const response = await fetch(baseUrl);

@@ -8,7 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // 初期値を設定する（保存されている場合はその値を表示）
   chrome.storage.local.get(['shouldShowPaidVideoValue', 'seasonData', 'season'], async (result) => {
     if (result.seasonData) {
-      Object.values(result.seasonData).forEach((season) => {
+      seasonDataArray = Object.values(result.seasonData);
+      seasonDataArray.sort((a, b) => parseInt(a.seasonCode) - parseInt(b.seasonCode));
+      seasonDataArray.forEach((season) => {
+        console.log(season); // TODO: debug
         const newOption = document.createElement('option');
         newOption.value = season.seasonName;
         newOption.text = season.seasonName;

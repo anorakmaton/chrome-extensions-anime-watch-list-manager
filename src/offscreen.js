@@ -58,7 +58,7 @@ async function episodeScraper(baseUrl, htmlString, season, animeList) {
 
     var pager = document.querySelector('.toolbar div.pager');
     if (!pager) { // まだ動画がない時pagerがundefinedになるので終了する
-        return false;
+        return [animeList, 0];
     }
     var currentPage = pager.querySelector('a.pagerBtn.switchingBtn.active');
     var nextPage = currentPage.nextElementSibling;
@@ -241,7 +241,6 @@ async function animeTitleScraper(htmlString, oldAnimeTitles) {
     });
     // すべての非同期処理が終わるのを待つ
     await Promise.all(promises);
-
     const newAnimeTitles = Object.keys(animeList).filter(title => !oldAnimeTitles.includes(title));
     return [animeList, newAnimeTitles];
 }
@@ -282,7 +281,13 @@ function isSimilar(str1, str2, threshold = 0.8) {
 }
 
 async function getAnimeData(data) {
-    const [animeList, newEpisodeCount] = await episodeScraper(data.baseUrl, data.htmlString, data.season, data.seasonAnimeData);
+    const [animeList, newEpisodeCount] = await episodeScraper(
+        data.baseUrl, 
+        data.htmlString, 
+        data.season, 
+        data.seasonAnimeData
+    );
+
     sendToBackground('getAnimeDataResult', { season: data.season, animeList, newEpisodeCount });
 }
 
